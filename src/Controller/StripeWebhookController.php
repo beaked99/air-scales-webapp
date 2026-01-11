@@ -116,7 +116,7 @@ class StripeWebhookController extends AbstractController
 
         // Get user by Stripe customer ID
         $user = $this->em->getRepository(User::class)
-            ->findOneBy(['stripeCustomerId' => $session->customer]);
+            ->findOneBy(['stripe_customer_id' => $session->customer]);
 
         if (!$user) {
             $this->logger->error('User not found for customer: ' . $session->customer);
