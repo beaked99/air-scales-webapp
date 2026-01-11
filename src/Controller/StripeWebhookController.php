@@ -148,7 +148,7 @@ class StripeWebhookController extends AbstractController
 
             // Find or create subscription
             $subscription = $this->em->getRepository(Subscription::class)
-                ->findOneBy(['stripeSubscriptionId' => $stripeSubscriptionId]);
+                ->findOneBy(['stripe_subscription_id' => $stripeSubscriptionId]);
 
             if (!$subscription) {
                 $subscription = new Subscription();
@@ -258,7 +258,7 @@ class StripeWebhookController extends AbstractController
         ]);
 
         $sub = $this->em->getRepository(Subscription::class)
-            ->findOneBy(['stripeSubscriptionId' => $subscription->id]);
+            ->findOneBy(['stripe_subscription_id' => $subscription->id]);
 
         if (!$sub) {
             $this->logger->warning('Subscription not found: ' . $subscription->id);
@@ -294,7 +294,7 @@ class StripeWebhookController extends AbstractController
         ]);
 
         $sub = $this->em->getRepository(Subscription::class)
-            ->findOneBy(['stripeSubscriptionId' => $subscription->id]);
+            ->findOneBy(['stripe_subscription_id' => $subscription->id]);
 
         if (!$sub) {
             $this->logger->warning('Subscription not found: ' . $subscription->id);
@@ -319,7 +319,7 @@ class StripeWebhookController extends AbstractController
         if ($invoice->subscription) {
             // Renewal payment - update subscription
             $sub = $this->em->getRepository(Subscription::class)
-                ->findOneBy(['stripeSubscriptionId' => $invoice->subscription]);
+                ->findOneBy(['stripe_subscription_id' => $invoice->subscription]);
 
             if ($sub) {
                 $sub->setStatus('active');
@@ -344,7 +344,7 @@ class StripeWebhookController extends AbstractController
 
         if ($invoice->subscription) {
             $sub = $this->em->getRepository(Subscription::class)
-                ->findOneBy(['stripeSubscriptionId' => $invoice->subscription]);
+                ->findOneBy(['stripe_subscription_id' => $invoice->subscription]);
 
             if ($sub) {
                 $sub->setStatus('past_due');
