@@ -147,9 +147,12 @@ class StripeWebhookController extends AbstractController
             $stripeSubscription = \Stripe\Subscription::retrieve($stripeSubscriptionId);
 
             $this->logger->info('Stripe subscription retrieved', [
+                'id' => $stripeSubscription->id,
                 'current_period_start' => $stripeSubscription->current_period_start,
                 'current_period_end' => $stripeSubscription->current_period_end,
-                'status' => $stripeSubscription->status
+                'status' => $stripeSubscription->status,
+                'object' => $stripeSubscription->object,
+                'all_keys' => array_keys((array)$stripeSubscription)
             ]);
 
             // Find or create subscription
