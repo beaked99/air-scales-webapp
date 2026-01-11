@@ -27,6 +27,15 @@ class Subscription
     #[ORM\Column(length: 50, nullable: true)]
     private ?string $plan_type = null; // monthly, yearly
 
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $scheduled_plan_type = null; // monthly, yearly (what will activate at next renewal)
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $scheduled_stripe_price_id = null; // Stripe price ID that will activate at next renewal
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $scheduled_change_effective_at = null; // When the scheduled change takes effect
+
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $current_period_start = null;
 
@@ -114,6 +123,39 @@ class Subscription
     public function setPlanType(?string $plan_type): static
     {
         $this->plan_type = $plan_type;
+        return $this;
+    }
+
+    public function getScheduledPlanType(): ?string
+    {
+        return $this->scheduled_plan_type;
+    }
+
+    public function setScheduledPlanType(?string $scheduled_plan_type): static
+    {
+        $this->scheduled_plan_type = $scheduled_plan_type;
+        return $this;
+    }
+
+    public function getScheduledStripePriceId(): ?string
+    {
+        return $this->scheduled_stripe_price_id;
+    }
+
+    public function setScheduledStripePriceId(?string $scheduled_stripe_price_id): static
+    {
+        $this->scheduled_stripe_price_id = $scheduled_stripe_price_id;
+        return $this;
+    }
+
+    public function getScheduledChangeEffectiveAt(): ?\DateTimeImmutable
+    {
+        return $this->scheduled_change_effective_at;
+    }
+
+    public function setScheduledChangeEffectiveAt(?\DateTimeImmutable $scheduled_change_effective_at): static
+    {
+        $this->scheduled_change_effective_at = $scheduled_change_effective_at;
         return $this;
     }
 

@@ -181,6 +181,24 @@ class StripeWebhookController extends AbstractController
                 $subscription->setCurrentPeriodEnd($periodEnd);
             }
 
+            // Detect plan type from Stripe price ID
+            if (!empty($subscriptionData['items']['data'][0]['price']['id'])) {
+                $stripePriceId = $subscriptionData['items']['data'][0]['price']['id'];
+
+                // Look up product by price ID to determine plan type
+                $product = $this->em->getRepository(Product::class)
+                    ->findOneBy(['stripePriceId' => $stripePriceId]);
+
+                if ($product) {
+                    // Set plan type based on product slug
+                    if (str_contains($product->getSlug(), 'yearly')) {
+                        $subscription->setPlanType('yearly');
+                    } elseif (str_contains($product->getSlug(), 'monthly')) {
+                        $subscription->setPlanType('monthly');
+                    }
+                }
+            }
+
             $this->em->persist($subscription);
             $this->em->flush();
 
@@ -300,6 +318,24 @@ class StripeWebhookController extends AbstractController
         if (!empty($subscriptionData['items']['data'][0]['current_period_end'])) {
             $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$subscriptionData['items']['data'][0]['current_period_end']);
             $sub->setCurrentPeriodEnd($periodEnd);
+        }
+
+        // Detect plan type from Stripe price ID
+        if (!empty($subscriptionData['items']['data'][0]['price']['id'])) {
+            $stripePriceId = $subscriptionData['items']['data'][0]['price']['id'];
+
+            // Look up product by price ID to determine plan type
+            $product = $this->em->getRepository(Product::class)
+                ->findOneBy(['stripePriceId' => $stripePriceId]);
+
+            if ($product) {
+                // Set plan type based on product slug
+                if (str_contains($product->getSlug(), 'yearly')) {
+                    $sub->setPlanType('yearly');
+                } elseif (str_contains($product->getSlug(), 'monthly')) {
+                    $sub->setPlanType('monthly');
+                }
+            }
         }
 
         if ($stripeSubscription->cancel_at_period_end) {
