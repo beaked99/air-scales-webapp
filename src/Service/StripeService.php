@@ -106,6 +106,9 @@ class StripeService
                 'quantity' => $quantity,
             ]],
             'mode' => 'payment',
+            'shipping_address_collection' => [
+                'allowed_countries' => ['US', 'CA'], // Adjust based on where you ship
+            ],
             'success_url' => $successUrl,
             'cancel_url' => $cancelUrl,
             'metadata' => [

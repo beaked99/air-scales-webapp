@@ -7,6 +7,8 @@ use App\Entity\Device;
 use App\Entity\User;
 use App\Entity\Vehicle;
 use App\Entity\Settings;
+use App\Entity\Order;
+use App\Entity\Product;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
@@ -62,8 +64,13 @@ class DashboardController extends AbstractDashboardController
     {
         yield MenuItem::linkToUrl('Home', 'fa fa-home', $this->generateUrl('app_homepage'));
         yield MenuItem::linkToDashboard('Dashboard', 'fa fa-dashboard');
+        yield MenuItem::section('Sales & Billing');
+        yield MenuItem::linkToCrud('Orders', 'fas fa-box', Order::class);
+        yield MenuItem::linkToCrud('Products', 'fas fa-tag', Product::class);
         yield MenuItem::linkToCrud('Pricing & Settings', 'fas fa-dollar-sign', Settings::class);
+        yield MenuItem::section('User Management');
         yield MenuItem::linkToCrud('Users', 'fas fa-users', User::class);
+        yield MenuItem::section('Hardware');
         yield MenuItem::linkToCrud('Devices','fa-solid fa-microchip', entityFqcn: Device::class);
         yield MenuItem::linkToCrud('Vehicle','fas fa-truck', Vehicle::class);
         yield MenuItem::linkToCrud('Calibration','fa-solid fa-scale-unbalanced-flip', Calibration::class);
