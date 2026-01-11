@@ -358,6 +358,11 @@ class UserController extends AbstractController
             return new JsonResponse(['error' => 'Can only upgrade from monthly plan'], 400);
         }
 
+        // Check if they already have a scheduled change
+        if ($subscription->getScheduledPlanType() !== null) {
+            return new JsonResponse(['error' => 'You already have a scheduled plan change. Cancel it first.'], 400);
+        }
+
         try {
             // Get yearly subscription product
             $yearlyProduct = $em->getRepository(\App\Entity\Product::class)
@@ -373,8 +378,10 @@ class UserController extends AbstractController
                 $yearlyProduct->getStripePriceId()
             );
 
-            // Update plan_type in database
-            $subscription->setPlanType('yearly');
+            // Store scheduled change in database (don't change current plan_type yet!)
+            $subscription->setScheduledPlanType('yearly');
+            $subscription->setScheduledStripePriceId($yearlyProduct->getStripePriceId());
+            $subscription->setScheduledChangeEffectiveAt($subscription->getCurrentPeriodEnd());
             $em->flush();
 
             return new JsonResponse([
@@ -415,6 +422,11 @@ class UserController extends AbstractController
             return new JsonResponse(['error' => 'Can only downgrade from yearly plan'], 400);
         }
 
+        // Check if they already have a scheduled change
+        if ($subscription->getScheduledPlanType() !== null) {
+            return new JsonResponse(['error' => 'You already have a scheduled plan change. Cancel it first.'], 400);
+        }
+
         try {
             // Get monthly subscription product
             $monthlyProduct = $em->getRepository(\App\Entity\Product::class)
@@ -430,8 +442,10 @@ class UserController extends AbstractController
                 $monthlyProduct->getStripePriceId()
             );
 
-            // Update plan_type in database
-            $subscription->setPlanType('monthly');
+            // Store scheduled change in database (don't change current plan_type yet!)
+            $subscription->setScheduledPlanType('monthly');
+            $subscription->setScheduledStripePriceId($monthlyProduct->getStripePriceId());
+            $subscription->setScheduledChangeEffectiveAt($subscription->getCurrentPeriodEnd());
             $em->flush();
 
             return new JsonResponse([
@@ -442,6 +456,65 @@ class UserController extends AbstractController
         } catch (\Exception $e) {
             return new JsonResponse([
                 'error' => 'Failed to schedule downgrade: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/api/subscription/cancel-scheduled-change', name: 'subscription_cancel_scheduled_change', methods: ['POST'])]
+    public function cancelScheduledChange(
+        EntityManagerInterface $em,
+        StripeService $stripe
+    ): JsonResponse {
+        $user = $this->getUser();
+
+        if (!$user) {
+            return new JsonResponse(['error' => 'Not authenticated'], 401);
+        }
+
+        $subscription = $user->getSubscription();
+
+        if (!$subscription) {
+            return new JsonResponse(['error' => 'No subscription found'], 404);
+        }
+
+        if (!$subscription->getStripeSubscriptionId()) {
+            return new JsonResponse(['error' => 'No Stripe subscription ID'], 400);
+        }
+
+        // Check if there's a scheduled change to cancel
+        if ($subscription->getScheduledPlanType() === null) {
+            return new JsonResponse(['error' => 'No scheduled plan change to cancel'], 400);
+        }
+
+        try {
+            // Get current plan's price ID to revert to
+            $currentPlanType = $subscription->getPlanType();
+            $currentProduct = $em->getRepository(\App\Entity\Product::class)
+                ->findOneBy(['slug' => $currentPlanType . '-subscription', 'isActive' => true]);
+
+            if (!$currentProduct || !$currentProduct->getStripePriceId()) {
+                return new JsonResponse(['error' => 'Current subscription plan not found'], 500);
+            }
+
+            // Revert Stripe subscription back to current plan price
+            $stripe->scheduleSubscriptionPriceChange(
+                $subscription->getStripeSubscriptionId(),
+                $currentProduct->getStripePriceId()
+            );
+
+            // Clear scheduled change fields
+            $subscription->setScheduledPlanType(null);
+            $subscription->setScheduledStripePriceId(null);
+            $subscription->setScheduledChangeEffectiveAt(null);
+            $em->flush();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Scheduled plan change has been cancelled. You will remain on your current plan.'
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Failed to cancel scheduled change: ' . $e->getMessage()
             ], 500);
         }
     }

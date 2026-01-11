@@ -181,7 +181,7 @@ class StripeWebhookController extends AbstractController
                 $subscription->setCurrentPeriodEnd($periodEnd);
             }
 
-            // Detect plan type from Stripe price ID
+            // Detect plan type from Stripe price ID (source of truth)
             if (!empty($subscriptionData['items']['data'][0]['price']['id'])) {
                 $stripePriceId = $subscriptionData['items']['data'][0]['price']['id'];
 
@@ -195,6 +195,19 @@ class StripeWebhookController extends AbstractController
                         $subscription->setPlanType('yearly');
                     } elseif (str_contains($product->getSlug(), 'monthly')) {
                         $subscription->setPlanType('monthly');
+                    }
+
+                    // Check if this fulfills a scheduled change
+                    if ($subscription->getScheduledStripePriceId() === $stripePriceId) {
+                        // Scheduled change has taken effect - clear scheduled fields
+                        $subscription->setScheduledPlanType(null);
+                        $subscription->setScheduledStripePriceId(null);
+                        $subscription->setScheduledChangeEffectiveAt(null);
+
+                        $this->logger->info('Scheduled plan change finalized', [
+                            'subscription_id' => $subscription->getId(),
+                            'new_plan_type' => $subscription->getPlanType()
+                        ]);
                     }
                 }
             }
@@ -320,7 +333,7 @@ class StripeWebhookController extends AbstractController
             $sub->setCurrentPeriodEnd($periodEnd);
         }
 
-        // Detect plan type from Stripe price ID
+        // Detect plan type from Stripe price ID (source of truth)
         if (!empty($subscriptionData['items']['data'][0]['price']['id'])) {
             $stripePriceId = $subscriptionData['items']['data'][0]['price']['id'];
 
@@ -334,6 +347,19 @@ class StripeWebhookController extends AbstractController
                     $sub->setPlanType('yearly');
                 } elseif (str_contains($product->getSlug(), 'monthly')) {
                     $sub->setPlanType('monthly');
+                }
+
+                // Check if this fulfills a scheduled change
+                if ($sub->getScheduledStripePriceId() === $stripePriceId) {
+                    // Scheduled change has taken effect - clear scheduled fields
+                    $sub->setScheduledPlanType(null);
+                    $sub->setScheduledStripePriceId(null);
+                    $sub->setScheduledChangeEffectiveAt(null);
+
+                    $this->logger->info('Scheduled plan change finalized', [
+                        'subscription_id' => $sub->getId(),
+                        'new_plan_type' => $sub->getPlanType()
+                    ]);
                 }
             }
         }
