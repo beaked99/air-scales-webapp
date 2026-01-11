@@ -40,6 +40,17 @@ class StripeWebhookController extends AbstractController
         $sigHeader = $request->headers->get('stripe-signature');
         $webhookSecret = $_ENV['STRIPE_WEBHOOK_SECRET'] ?? '';
 
+        $this->logger->info('Webhook request received', [
+            'has_signature' => !empty($sigHeader),
+            'has_secret' => !empty($webhookSecret),
+            'payload_length' => strlen($payload)
+        ]);
+
+        if (empty($webhookSecret)) {
+            $this->logger->error('Webhook secret not configured');
+            return new Response('Webhook secret not configured', 500);
+        }
+
         try {
             // Verify webhook signature
             $event = Webhook::constructEvent($payload, $sigHeader, $webhookSecret);
@@ -47,7 +58,9 @@ class StripeWebhookController extends AbstractController
             $this->logger->error('Invalid webhook payload: ' . $e->getMessage());
             return new Response('Invalid payload', 400);
         } catch (SignatureVerificationException $e) {
-            $this->logger->error('Invalid webhook signature: ' . $e->getMessage());
+            $this->logger->error('Invalid webhook signature: ' . $e->getMessage(), [
+                'secret_prefix' => substr($webhookSecret, 0, 10)
+            ]);
             return new Response('Invalid signature', 400);
         }
 
@@ -123,28 +136,50 @@ class StripeWebhookController extends AbstractController
     {
         $stripeSubscriptionId = $session->subscription;
 
-        // Find or create subscription
-        $subscription = $this->em->getRepository(Subscription::class)
-            ->findOneBy(['stripeSubscriptionId' => $stripeSubscriptionId]);
-
-        if (!$subscription) {
-            $subscription = new Subscription();
-            $subscription->setUser($user);
-            $subscription->setStripeSubscriptionId($stripeSubscriptionId);
+        if (!$stripeSubscriptionId) {
+            $this->logger->error('No subscription ID in checkout session');
+            return;
         }
 
-        $subscription->setStatus('active');
-        $subscription->setCurrentPeriodStart(new \DateTimeImmutable());
+        try {
+            // Fetch full subscription details from Stripe
+            \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+            $stripeSubscription = \Stripe\Subscription::retrieve($stripeSubscriptionId);
 
-        // Subscription period end will be updated by subscription.updated webhook
+            // Find or create subscription
+            $subscription = $this->em->getRepository(Subscription::class)
+                ->findOneBy(['stripeSubscriptionId' => $stripeSubscriptionId]);
 
-        $this->em->persist($subscription);
-        $this->em->flush();
+            if (!$subscription) {
+                $subscription = new Subscription();
+                $subscription->setUser($user);
+                $subscription->setStripeSubscriptionId($stripeSubscriptionId);
+            }
 
-        $this->logger->info('Subscription created/updated', [
-            'user_id' => $user->getId(),
-            'subscription_id' => $subscription->getId()
-        ]);
+            $subscription->setStatus($stripeSubscription->status);
+            $subscription->setCurrentPeriodStart(
+                (new \DateTimeImmutable())->setTimestamp($stripeSubscription->current_period_start)
+            );
+            $subscription->setCurrentPeriodEnd(
+                (new \DateTimeImmutable())->setTimestamp($stripeSubscription->current_period_end)
+            );
+
+            $this->em->persist($subscription);
+            $this->em->flush();
+
+            $this->logger->info('Subscription created/updated', [
+                'user_id' => $user->getId(),
+                'subscription_id' => $subscription->getId(),
+                'stripe_subscription_id' => $stripeSubscriptionId,
+                'status' => $subscription->getStatus()
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to create/update subscription', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     private function createDeviceOrder(User $user, $session): void
