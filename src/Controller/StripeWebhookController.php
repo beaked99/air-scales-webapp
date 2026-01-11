@@ -149,8 +149,15 @@ class StripeWebhookController extends AbstractController
 
     private function createDeviceOrder(User $user, $session): void
     {
+        // Retrieve full session with line items expanded
+        \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+        $fullSession = \Stripe\Checkout\Session::retrieve([
+            'id' => $session->id,
+            'expand' => ['line_items']
+        ]);
+
         // Extract product info from line items
-        $lineItems = $session->line_items->data ?? [];
+        $lineItems = $fullSession->line_items->data ?? [];
 
         if (empty($lineItems)) {
             $this->logger->warning('No line items in checkout session');

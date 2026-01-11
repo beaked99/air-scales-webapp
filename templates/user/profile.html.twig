@@ -292,6 +292,31 @@
           >
             <i class="fas fa-credit-card mr-2"></i>Update Payment Method
           </button>
+        {% elseif subscriptionStatus == 'inactive' %}
+          <!-- Inactive Subscription -->
+          <div class="bg-yellow-900/30 border border-yellow-600 rounded-lg p-4 mb-4">
+            <div class="flex items-center">
+              <i class="fas fa-exclamation-triangle text-yellow-400 text-2xl mr-3"></i>
+              <div>
+                <div class="font-semibold text-yellow-400">No Active Subscription</div>
+                <div class="text-sm text-gray-300">Subscribe to view full weight readings</div>
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <button
+              onclick="subscribeMonthly()"
+              class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded"
+            >
+              Subscribe Now - $5/month
+            </button>
+            <button
+              onclick="subscribeYearly()"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded"
+            >
+              Subscribe Yearly - $50/year (Save $10!)
+            </button>
+          </div>
         {% else %}
           <!-- Other Status -->
           <div class="bg-gray-700 rounded-lg p-4">
