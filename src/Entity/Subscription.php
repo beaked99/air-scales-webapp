@@ -233,19 +233,12 @@ class Subscription
             }
         }
 
-        // Check paid subscription with 7-day grace period
+        // Check paid subscription (no grace period)
         if (in_array($this->status, ['active', 'trialing'])) {
             return true;
         }
 
-        // Grace period: 7 days after subscription ends
-        if ($this->status === 'canceled' && $this->current_period_end) {
-            $gracePeriodEnd = $this->current_period_end->modify('+7 days');
-            if ($gracePeriodEnd > new \DateTimeImmutable()) {
-                return true;
-            }
-        }
-
+        // No grace period - access ends at current_period_end
         return false;
     }
 
@@ -267,11 +260,10 @@ class Subscription
             }
         }
 
-        // Check subscription end + grace period
+        // Check subscription end (no grace period)
         if ($this->current_period_end) {
-            $gracePeriodEnd = $this->current_period_end->modify('+7 days');
-            if ($gracePeriodEnd > $now) {
-                return $now->diff($gracePeriodEnd)->days;
+            if ($this->current_period_end > $now) {
+                return $now->diff($this->current_period_end)->days;
             }
         }
 
