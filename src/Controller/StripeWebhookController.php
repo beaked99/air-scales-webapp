@@ -146,6 +146,12 @@ class StripeWebhookController extends AbstractController
             \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
             $stripeSubscription = \Stripe\Subscription::retrieve($stripeSubscriptionId);
 
+            $this->logger->info('Stripe subscription retrieved', [
+                'current_period_start' => $stripeSubscription->current_period_start,
+                'current_period_end' => $stripeSubscription->current_period_end,
+                'status' => $stripeSubscription->status
+            ]);
+
             // Find or create subscription
             $subscription = $this->em->getRepository(Subscription::class)
                 ->findOneBy(['stripe_subscription_id' => $stripeSubscriptionId]);
@@ -157,12 +163,17 @@ class StripeWebhookController extends AbstractController
             }
 
             $subscription->setStatus($stripeSubscription->status);
-            $subscription->setCurrentPeriodStart(
-                (new \DateTimeImmutable())->setTimestamp($stripeSubscription->current_period_start)
-            );
-            $subscription->setCurrentPeriodEnd(
-                (new \DateTimeImmutable())->setTimestamp($stripeSubscription->current_period_end)
-            );
+
+            // Convert Unix timestamps to DateTimeImmutable
+            if ($stripeSubscription->current_period_start) {
+                $periodStart = \DateTimeImmutable::createFromFormat('U', (string)$stripeSubscription->current_period_start);
+                $subscription->setCurrentPeriodStart($periodStart);
+            }
+
+            if ($stripeSubscription->current_period_end) {
+                $periodEnd = \DateTimeImmutable::createFromFormat('U', (string)$stripeSubscription->current_period_end);
+                $subscription->setCurrentPeriodEnd($periodEnd);
+            }
 
             $this->em->persist($subscription);
             $this->em->flush();
@@ -267,12 +278,16 @@ class StripeWebhookController extends AbstractController
 
         // Update subscription details
         $sub->setStatus($subscription->status);
-        $sub->setCurrentPeriodStart(
-            (new \DateTimeImmutable())->setTimestamp($subscription->current_period_start)
-        );
-        $sub->setCurrentPeriodEnd(
-            (new \DateTimeImmutable())->setTimestamp($subscription->current_period_end)
-        );
+
+        if ($subscription->current_period_start) {
+            $periodStart = \DateTimeImmutable::createFromFormat('U', (string)$subscription->current_period_start);
+            $sub->setCurrentPeriodStart($periodStart);
+        }
+
+        if ($subscription->current_period_end) {
+            $periodEnd = \DateTimeImmutable::createFromFormat('U', (string)$subscription->current_period_end);
+            $sub->setCurrentPeriodEnd($periodEnd);
+        }
 
         if ($subscription->cancel_at_period_end) {
             $sub->setStatus('canceled');
@@ -323,9 +338,12 @@ class StripeWebhookController extends AbstractController
 
             if ($sub) {
                 $sub->setStatus('active');
-                $sub->setCurrentPeriodEnd(
-                    (new \DateTimeImmutable())->setTimestamp($invoice->period_end)
-                );
+
+                if ($invoice->period_end) {
+                    $periodEnd = \DateTimeImmutable::createFromFormat('U', (string)$invoice->period_end);
+                    $sub->setCurrentPeriodEnd($periodEnd);
+                }
+
                 $this->em->flush();
 
                 $this->logger->info('Subscription renewed', [
