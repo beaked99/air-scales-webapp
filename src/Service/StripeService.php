@@ -177,40 +177,65 @@ class StripeService
 
         // Check if subscription already has a schedule
         if ($subscription->schedule) {
-            // Cancel existing schedule first
+            // Update existing schedule to add the new plan phase
             $scheduleId = is_string($subscription->schedule) ? $subscription->schedule : $subscription->schedule->id;
-            \Stripe\SubscriptionSchedule::update($scheduleId, ['end_behavior' => 'release']);
-            \Stripe\SubscriptionSchedule::release($scheduleId);
+            $schedule = \Stripe\SubscriptionSchedule::retrieve($scheduleId);
+
+            // Update the schedule with new phases
+            \Stripe\SubscriptionSchedule::update($scheduleId, [
+                'phases' => [
+                    [
+                        // Phase 1: Current plan until period end (keep existing)
+                        'items' => $schedule->phases[0]->items,
+                        'start_date' => $schedule->phases[0]->start_date,
+                        'end_date' => $schedule->phases[0]->end_date,
+                    ],
+                    [
+                        // Phase 2: New plan starting at next renewal
+                        'items' => [[
+                            'price' => $newPriceId,
+                            'quantity' => 1,
+                        ]],
+                        'iterations' => 1,
+                    ],
+                ],
+                'end_behavior' => 'release',
+            ]);
+        } else {
+            // Create a new subscription schedule from the subscription
+            \Stripe\SubscriptionSchedule::create([
+                'from_subscription' => $subscriptionId,
+            ]);
+
+            // Retrieve the newly created schedule
+            $subscription = Subscription::retrieve($subscriptionId);
+            $scheduleId = is_string($subscription->schedule) ? $subscription->schedule : $subscription->schedule->id;
+            $schedule = \Stripe\SubscriptionSchedule::retrieve($scheduleId);
+
+            // Now update it to add the second phase
+            \Stripe\SubscriptionSchedule::update($scheduleId, [
+                'phases' => [
+                    [
+                        // Phase 1: Current plan until period end
+                        'items' => [[
+                            'price' => $subscription->items->data[0]->price->id,
+                            'quantity' => 1,
+                        ]],
+                        'start_date' => $schedule->phases[0]->start_date,
+                        'end_date' => $schedule->phases[0]->end_date,
+                    ],
+                    [
+                        // Phase 2: New plan starting at next renewal
+                        'items' => [[
+                            'price' => $newPriceId,
+                            'quantity' => 1,
+                        ]],
+                        'iterations' => 1,
+                    ],
+                ],
+                'end_behavior' => 'release',
+            ]);
         }
-
-        // Get current period end (when the change should take effect)
-        $currentPeriodEnd = $subscription->current_period_end;
-
-        // Create a subscription schedule
-        \Stripe\SubscriptionSchedule::create([
-            'from_subscription' => $subscriptionId,
-            'end_behavior' => 'release', // Release back to regular subscription after schedule completes
-            'phases' => [
-                [
-                    // Phase 1: Current plan until period end
-                    'items' => [[
-                        'price' => $subscription->items->data[0]->price->id,
-                        'quantity' => 1,
-                    ]],
-                    'start_date' => $subscription->current_period_start,
-                    'end_date' => $currentPeriodEnd,
-                ],
-                [
-                    // Phase 2: New plan starting at next renewal
-                    'items' => [[
-                        'price' => $newPriceId,
-                        'quantity' => 1,
-                    ]],
-                    'start_date' => $currentPeriodEnd,
-                    'iterations' => 1, // Just one billing cycle, then release
-                ],
-            ],
-        ]);
     }
 
     /**
