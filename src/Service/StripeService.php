@@ -181,12 +181,21 @@ class StripeService
             $scheduleId = is_string($subscription->schedule) ? $subscription->schedule : $subscription->schedule->id;
             $schedule = \Stripe\SubscriptionSchedule::retrieve($scheduleId);
 
+            // Extract items from phase 1 properly
+            $phase1Items = [];
+            foreach ($schedule->phases[0]->items as $item) {
+                $phase1Items[] = [
+                    'price' => $item->price,
+                    'quantity' => $item->quantity ?? 1,
+                ];
+            }
+
             // Update the schedule with new phases
             \Stripe\SubscriptionSchedule::update($scheduleId, [
                 'phases' => [
                     [
                         // Phase 1: Current plan until period end (keep existing)
-                        'items' => $schedule->phases[0]->items,
+                        'items' => $phase1Items,
                         'start_date' => $schedule->phases[0]->start_date,
                         'end_date' => $schedule->phases[0]->end_date,
                     ],
