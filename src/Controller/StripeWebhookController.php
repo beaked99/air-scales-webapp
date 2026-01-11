@@ -152,7 +152,7 @@ class StripeWebhookController extends AbstractController
                 'current_period_end' => $stripeSubscription->current_period_end,
                 'status' => $stripeSubscription->status,
                 'object' => $stripeSubscription->object,
-                'all_keys' => array_keys((array)$stripeSubscription)
+                'toArray' => $stripeSubscription->toArray()
             ]);
 
             // Find or create subscription
@@ -168,13 +168,13 @@ class StripeWebhookController extends AbstractController
             $subscription->setStatus($stripeSubscription->status);
 
             // Convert Unix timestamps to DateTimeImmutable
-            if ($stripeSubscription->current_period_start) {
-                $periodStart = \DateTimeImmutable::createFromFormat('U', (string)$stripeSubscription->current_period_start);
+            if (!empty($stripeSubscription->current_period_start)) {
+                $periodStart = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_start);
                 $subscription->setCurrentPeriodStart($periodStart);
             }
 
-            if ($stripeSubscription->current_period_end) {
-                $periodEnd = \DateTimeImmutable::createFromFormat('U', (string)$stripeSubscription->current_period_end);
+            if (!empty($stripeSubscription->current_period_end)) {
+                $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_end);
                 $subscription->setCurrentPeriodEnd($periodEnd);
             }
 
@@ -271,28 +271,32 @@ class StripeWebhookController extends AbstractController
             'subscription_id' => $subscription->id
         ]);
 
+        // Retrieve full subscription from Stripe to ensure we have all fields
+        \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+        $stripeSubscription = \Stripe\Subscription::retrieve($subscription->id);
+
         $sub = $this->em->getRepository(Subscription::class)
-            ->findOneBy(['stripe_subscription_id' => $subscription->id]);
+            ->findOneBy(['stripe_subscription_id' => $stripeSubscription->id]);
 
         if (!$sub) {
-            $this->logger->warning('Subscription not found: ' . $subscription->id);
+            $this->logger->warning('Subscription not found: ' . $stripeSubscription->id);
             return;
         }
 
         // Update subscription details
-        $sub->setStatus($subscription->status);
+        $sub->setStatus($stripeSubscription->status);
 
-        if ($subscription->current_period_start) {
-            $periodStart = \DateTimeImmutable::createFromFormat('U', (string)$subscription->current_period_start);
+        if (!empty($stripeSubscription->current_period_start)) {
+            $periodStart = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_start);
             $sub->setCurrentPeriodStart($periodStart);
         }
 
-        if ($subscription->current_period_end) {
-            $periodEnd = \DateTimeImmutable::createFromFormat('U', (string)$subscription->current_period_end);
+        if (!empty($stripeSubscription->current_period_end)) {
+            $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_end);
             $sub->setCurrentPeriodEnd($periodEnd);
         }
 
-        if ($subscription->cancel_at_period_end) {
+        if ($stripeSubscription->cancel_at_period_end) {
             $sub->setStatus('canceled');
             $sub->setCanceledAt(new \DateTimeImmutable());
         }
@@ -342,8 +346,8 @@ class StripeWebhookController extends AbstractController
             if ($sub) {
                 $sub->setStatus('active');
 
-                if ($invoice->period_end) {
-                    $periodEnd = \DateTimeImmutable::createFromFormat('U', (string)$invoice->period_end);
+                if (!empty($invoice->period_end)) {
+                    $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$invoice->period_end);
                     $sub->setCurrentPeriodEnd($periodEnd);
                 }
 
