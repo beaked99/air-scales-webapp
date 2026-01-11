@@ -168,13 +168,16 @@ class StripeWebhookController extends AbstractController
             $subscription->setStatus($stripeSubscription->status);
 
             // Convert Unix timestamps to DateTimeImmutable
-            if (!empty($stripeSubscription->current_period_start)) {
-                $periodStart = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_start);
+            // Get timestamps from the first subscription item
+            $subscriptionData = $stripeSubscription->toArray();
+
+            if (!empty($subscriptionData['items']['data'][0]['current_period_start'])) {
+                $periodStart = (new \DateTimeImmutable())->setTimestamp((int)$subscriptionData['items']['data'][0]['current_period_start']);
                 $subscription->setCurrentPeriodStart($periodStart);
             }
 
-            if (!empty($stripeSubscription->current_period_end)) {
-                $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_end);
+            if (!empty($subscriptionData['items']['data'][0]['current_period_end'])) {
+                $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$subscriptionData['items']['data'][0]['current_period_end']);
                 $subscription->setCurrentPeriodEnd($periodEnd);
             }
 
@@ -286,13 +289,16 @@ class StripeWebhookController extends AbstractController
         // Update subscription details
         $sub->setStatus($stripeSubscription->status);
 
-        if (!empty($stripeSubscription->current_period_start)) {
-            $periodStart = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_start);
+        // Get timestamps from the first subscription item
+        $subscriptionData = $stripeSubscription->toArray();
+
+        if (!empty($subscriptionData['items']['data'][0]['current_period_start'])) {
+            $periodStart = (new \DateTimeImmutable())->setTimestamp((int)$subscriptionData['items']['data'][0]['current_period_start']);
             $sub->setCurrentPeriodStart($periodStart);
         }
 
-        if (!empty($stripeSubscription->current_period_end)) {
-            $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$stripeSubscription->current_period_end);
+        if (!empty($subscriptionData['items']['data'][0]['current_period_end'])) {
+            $periodEnd = (new \DateTimeImmutable())->setTimestamp((int)$subscriptionData['items']['data'][0]['current_period_end']);
             $sub->setCurrentPeriodEnd($periodEnd);
         }
 
