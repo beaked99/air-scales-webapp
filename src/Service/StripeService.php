@@ -169,18 +169,47 @@ class StripeService
 
     /**
      * Schedule subscription price change at next renewal (no proration)
+     * Uses Subscription Schedules for interval changes (monthly <-> yearly)
      */
-    public function scheduleSubscriptionPriceChange(string $subscriptionId, string $newPriceId): Subscription
+    public function scheduleSubscriptionPriceChange(string $subscriptionId, string $newPriceId): void
     {
         $subscription = Subscription::retrieve($subscriptionId);
 
-        return Subscription::update($subscriptionId, [
-            'items' => [[
-                'id' => $subscription->items->data[0]->id,
-                'price' => $newPriceId,
-            ]],
-            'proration_behavior' => 'none',
-            'billing_cycle_anchor' => 'unchanged',
+        // Check if subscription already has a schedule
+        if ($subscription->schedule) {
+            // Cancel existing schedule first
+            $scheduleId = is_string($subscription->schedule) ? $subscription->schedule : $subscription->schedule->id;
+            \Stripe\SubscriptionSchedule::update($scheduleId, ['end_behavior' => 'release']);
+            \Stripe\SubscriptionSchedule::release($scheduleId);
+        }
+
+        // Get current period end (when the change should take effect)
+        $currentPeriodEnd = $subscription->current_period_end;
+
+        // Create a subscription schedule
+        \Stripe\SubscriptionSchedule::create([
+            'from_subscription' => $subscriptionId,
+            'end_behavior' => 'release', // Release back to regular subscription after schedule completes
+            'phases' => [
+                [
+                    // Phase 1: Current plan until period end
+                    'items' => [[
+                        'price' => $subscription->items->data[0]->price->id,
+                        'quantity' => 1,
+                    ]],
+                    'start_date' => $subscription->current_period_start,
+                    'end_date' => $currentPeriodEnd,
+                ],
+                [
+                    // Phase 2: New plan starting at next renewal
+                    'items' => [[
+                        'price' => $newPriceId,
+                        'quantity' => 1,
+                    ]],
+                    'start_date' => $currentPeriodEnd,
+                    'iterations' => 1, // Just one billing cycle, then release
+                ],
+            ],
         ]);
     }
 
