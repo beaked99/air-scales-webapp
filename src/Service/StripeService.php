@@ -191,12 +191,11 @@ class StripeService
                         'end_date' => $schedule->phases[0]->end_date,
                     ],
                     [
-                        // Phase 2: New plan starting at next renewal
+                        // Phase 2: New plan - continues indefinitely until released
                         'items' => [[
                             'price' => $newPriceId,
                             'quantity' => 1,
                         ]],
-                        'iterations' => 1,
                     ],
                 ],
                 'end_behavior' => 'release',
@@ -225,12 +224,11 @@ class StripeService
                         'end_date' => $schedule->phases[0]->end_date,
                     ],
                     [
-                        // Phase 2: New plan starting at next renewal
+                        // Phase 2: New plan - continues indefinitely until released
                         'items' => [[
                             'price' => $newPriceId,
                             'quantity' => 1,
                         ]],
-                        'iterations' => 1,
                     ],
                 ],
                 'end_behavior' => 'release',
