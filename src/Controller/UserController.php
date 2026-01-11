@@ -333,18 +333,116 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/subscription/upgrade-yearly', name: 'subscription_upgrade_yearly', methods: ['POST'])]
-    public function upgradeToYearly(): JsonResponse
-    {
+    public function upgradeToYearly(
+        EntityManagerInterface $em,
+        StripeService $stripe
+    ): JsonResponse {
         $user = $this->getUser();
 
         if (!$user) {
             return new JsonResponse(['error' => 'Not authenticated'], 401);
         }
 
-        // TODO: Create Stripe Checkout session for yearly upgrade
-        return new JsonResponse([
-            'checkout_url' => 'https://checkout.stripe.com/session/placeholder',
-            'message' => 'Stripe integration pending'
-        ]);
+        $subscription = $user->getSubscription();
+
+        if (!$subscription) {
+            return new JsonResponse(['error' => 'No subscription found'], 404);
+        }
+
+        if (!$subscription->getStripeSubscriptionId()) {
+            return new JsonResponse(['error' => 'No Stripe subscription ID'], 400);
+        }
+
+        // Check if user is on monthly plan
+        if ($subscription->getPlanType() !== 'monthly') {
+            return new JsonResponse(['error' => 'Can only upgrade from monthly plan'], 400);
+        }
+
+        try {
+            // Get yearly subscription product
+            $yearlyProduct = $em->getRepository(\App\Entity\Product::class)
+                ->findOneBy(['slug' => 'yearly-subscription', 'isActive' => true]);
+
+            if (!$yearlyProduct || !$yearlyProduct->getStripePriceId()) {
+                return new JsonResponse(['error' => 'Yearly subscription not configured'], 500);
+            }
+
+            // Schedule price change to yearly at next renewal (no proration)
+            $stripe->scheduleSubscriptionPriceChange(
+                $subscription->getStripeSubscriptionId(),
+                $yearlyProduct->getStripePriceId()
+            );
+
+            // Update plan_type in database
+            $subscription->setPlanType('yearly');
+            $em->flush();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Your subscription will upgrade to yearly at the next renewal on ' .
+                            ($subscription->getCurrentPeriodEnd() ? $subscription->getCurrentPeriodEnd()->format('M j, Y') : 'renewal date')
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Failed to schedule upgrade: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/api/subscription/downgrade-monthly', name: 'subscription_downgrade_monthly', methods: ['POST'])]
+    public function downgradeToMonthly(
+        EntityManagerInterface $em,
+        StripeService $stripe
+    ): JsonResponse {
+        $user = $this->getUser();
+
+        if (!$user) {
+            return new JsonResponse(['error' => 'Not authenticated'], 401);
+        }
+
+        $subscription = $user->getSubscription();
+
+        if (!$subscription) {
+            return new JsonResponse(['error' => 'No subscription found'], 404);
+        }
+
+        if (!$subscription->getStripeSubscriptionId()) {
+            return new JsonResponse(['error' => 'No Stripe subscription ID'], 400);
+        }
+
+        // Check if user is on yearly plan
+        if ($subscription->getPlanType() !== 'yearly') {
+            return new JsonResponse(['error' => 'Can only downgrade from yearly plan'], 400);
+        }
+
+        try {
+            // Get monthly subscription product
+            $monthlyProduct = $em->getRepository(\App\Entity\Product::class)
+                ->findOneBy(['slug' => 'monthly-subscription', 'isActive' => true]);
+
+            if (!$monthlyProduct || !$monthlyProduct->getStripePriceId()) {
+                return new JsonResponse(['error' => 'Monthly subscription not configured'], 500);
+            }
+
+            // Schedule price change to monthly at next renewal (no proration)
+            $stripe->scheduleSubscriptionPriceChange(
+                $subscription->getStripeSubscriptionId(),
+                $monthlyProduct->getStripePriceId()
+            );
+
+            // Update plan_type in database
+            $subscription->setPlanType('monthly');
+            $em->flush();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Your subscription will downgrade to monthly at the next renewal on ' .
+                            ($subscription->getCurrentPeriodEnd() ? $subscription->getCurrentPeriodEnd()->format('M j, Y') : 'renewal date')
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Failed to schedule downgrade: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

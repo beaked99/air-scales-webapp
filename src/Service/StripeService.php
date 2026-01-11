@@ -168,6 +168,23 @@ class StripeService
     }
 
     /**
+     * Schedule subscription price change at next renewal (no proration)
+     */
+    public function scheduleSubscriptionPriceChange(string $subscriptionId, string $newPriceId): Subscription
+    {
+        $subscription = Subscription::retrieve($subscriptionId);
+
+        return Subscription::update($subscriptionId, [
+            'items' => [[
+                'id' => $subscription->items->data[0]->id,
+                'price' => $newPriceId,
+            ]],
+            'proration_behavior' => 'none',
+            'billing_cycle_anchor' => 'unchanged',
+        ]);
+    }
+
+    /**
      * Get publishable key for frontend
      */
     public function getPublishableKey(): string

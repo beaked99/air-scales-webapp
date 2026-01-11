@@ -242,6 +242,13 @@
             >
               <i class="fas fa-arrow-up mr-2"></i>Upgrade to Yearly (Save $10)
             </button>
+            {% elseif subscription.planType == 'yearly' %}
+            <button
+              onclick="downgradeToMonthly()"
+              class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded"
+            >
+              <i class="fas fa-arrow-down mr-2"></i>Downgrade to Monthly
+            </button>
             {% endif %}
             <button
               onclick="cancelSubscription()"
@@ -489,6 +496,10 @@ async function openStripePortal() {
 }
 
 async function upgradeToYearly() {
+  if (!confirm('Upgrade to yearly plan? This will take effect at your next renewal date. You\'ll save $10/year!')) {
+    return;
+  }
+
   try {
     const response = await fetch('{{ path('subscription_upgrade_yearly') }}', {
       method: 'POST',
@@ -497,10 +508,35 @@ async function upgradeToYearly() {
 
     const data = await response.json();
 
-    if (data.checkout_url) {
-      // TODO: When Stripe is integrated, this will redirect to checkout
-      alert(data.message || 'Stripe checkout will open here when integrated');
-      // window.location.href = data.checkout_url;
+    if (data.success) {
+      showSuccess(data.message);
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      showError(data.error || 'Upgrade failed');
+    }
+  } catch (error) {
+    showError('Network error');
+  }
+}
+
+async function downgradeToMonthly() {
+  if (!confirm('Downgrade to monthly plan? This will take effect at your next renewal date.')) {
+    return;
+  }
+
+  try {
+    const response = await fetch('{{ path('subscription_downgrade_monthly') }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      showSuccess(data.message);
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      showError(data.error || 'Downgrade failed');
     }
   } catch (error) {
     showError('Network error');
