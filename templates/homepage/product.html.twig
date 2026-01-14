@@ -113,9 +113,9 @@
             </div>
           </div>
 
-          <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition" onclick="alert('Contact us for pricing and availability!')">
-            <i class="fas fa-envelope mr-2"></i>Request Quote
-          </button>
+          <a href="{{ path('order_create', {type: 'single'}) }}" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition text-center">
+            <i class="fas fa-shopping-cart mr-2"></i>Order Now
+          </a>
         </div>
 
         <!-- Dual Sensor Configuration -->
@@ -162,9 +162,9 @@
             </div>
           </div>
 
-          <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition" onclick="alert('Contact us for pricing and availability!')">
-            <i class="fas fa-envelope mr-2"></i>Request Quote
-          </button>
+          <a href="{{ path('order_create', {type: 'dual'}) }}" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition text-center">
+            <i class="fas fa-shopping-cart mr-2"></i>Order Now
+          </a>
         </div>
       </div>
     </div>

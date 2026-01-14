@@ -1,0 +1,164 @@
+<?php
+
+namespace App\Controller;
+
+use App\Entity\Order;
+use App\Entity\Product;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+use Stripe\Stripe;
+use Stripe\Checkout\Session as StripeSession;
+
+final class OrderController extends AbstractController
+{
+    public function __construct(
+        private EntityManagerInterface $em
+    ) {}
+
+    #[Route('/order', name: 'order_create')]
+    public function create(Request $request): Response
+    {
+        // Get device type from query param (single or dual)
+        $deviceType = $request->query->get('type', 'single');
+
+        return $this->render('order/create.html.twig', [
+            'device_type' => $deviceType,
+        ]);
+    }
+
+    #[Route('/order/checkout', name: 'order_checkout', methods: ['POST'])]
+    public function checkout(Request $request): Response
+    {
+        // This user must be logged in to order
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+
+        $user = $this->getUser();
+
+        // Get form data
+        $deviceType = $request->request->get('device_type'); // 'single' or 'dual'
+        $quantity = (int) $request->request->get('quantity', 1);
+        $shippingAddress = $request->request->get('shipping_address');
+        $shippingCity = $request->request->get('shipping_city');
+        $shippingState = $request->request->get('shipping_state');
+        $shippingZip = $request->request->get('shipping_zip');
+        $shippingCountry = $request->request->get('shipping_country', 'US');
+
+        // Combine shipping address
+        $fullShippingAddress = sprintf(
+            "%s\n%s, %s %s\n%s",
+            $shippingAddress,
+            $shippingCity,
+            $shippingState,
+            $shippingZip,
+            $shippingCountry
+        );
+
+        // Find the product based on device type
+        $productSlug = $deviceType === 'dual' ? 'device-dual-sensor' : 'device-single-sensor';
+        $product = $this->em->getRepository(Product::class)->findOneBy(['slug' => $productSlug, 'isActive' => true]);
+
+        if (!$product) {
+            $this->addFlash('error', 'Product not found. Please contact support.');
+            return $this->redirectToRoute('order_create');
+        }
+
+        // Create order in database
+        $order = new Order();
+        $order->setUser($user);
+        $order->setProduct($product);
+        $order->setQuantity($quantity);
+        $order->setTotalPaid('0.00'); // Will be updated after payment
+        $order->setStatus('pending');
+        $order->setShippingAddress($fullShippingAddress);
+
+        $this->em->persist($order);
+        $this->em->flush();
+
+        // Set Stripe API key
+        $stripeSecretKey = $this->getParameter('stripe_secret_key');
+        Stripe::setApiKey($stripeSecretKey);
+
+        // Calculate total price
+        $unitPrice = (float) $product->getPriceUsd();
+        $totalPrice = $unitPrice * $quantity;
+
+        // Create Stripe Checkout Session
+        try {
+            $checkoutSession = StripeSession::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => 'usd',
+                        'product_data' => [
+                            'name' => $product->getName(),
+                            'description' => $product->getDescription(),
+                        ],
+                        'unit_amount' => (int) ($unitPrice * 100), // Stripe uses cents
+                    ],
+                    'quantity' => $quantity,
+                ]],
+                'mode' => 'payment',
+                'success_url' => $this->generateUrl('order_success', ['order_id' => $order->getId()], 0),
+                'cancel_url' => $this->generateUrl('order_cancel', ['order_id' => $order->getId()], 0),
+                'customer_email' => $user->getEmail(),
+                'metadata' => [
+                    'order_id' => $order->getId(),
+                ],
+            ]);
+
+            // Save Stripe session ID to order
+            $order->setStripeCheckoutSessionId($checkoutSession->id);
+            $this->em->flush();
+
+            // Redirect to Stripe Checkout
+            return $this->redirect($checkoutSession->url);
+
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Payment processing error: ' . $e->getMessage());
+            return $this->redirectToRoute('order_create');
+        }
+    }
+
+    #[Route('/order/success/{order_id}', name: 'order_success')]
+    public function success(int $order_id): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+
+        $order = $this->em->getRepository(Order::class)->find($order_id);
+
+        if (!$order || $order->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Order not found');
+        }
+
+        // Update order status to processing
+        $order->setStatus('processing');
+        $this->em->flush();
+
+        return $this->render('order/success.html.twig', [
+            'order' => $order,
+        ]);
+    }
+
+    #[Route('/order/cancel/{order_id}', name: 'order_cancel')]
+    public function cancel(int $order_id): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+
+        $order = $this->em->getRepository(Order::class)->find($order_id);
+
+        if (!$order || $order->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Order not found');
+        }
+
+        // Mark order as canceled
+        $order->setStatus('canceled');
+        $this->em->flush();
+
+        return $this->render('order/cancel.html.twig', [
+            'order' => $order,
+        ]);
+    }
+}
