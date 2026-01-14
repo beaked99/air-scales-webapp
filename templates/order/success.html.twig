@@ -3,7 +3,9 @@
 {% block title %}Order Confirmed - AirScales{% endblock %}
 
 {% block body %}
-  <section class="container mx-auto px-6 py-12 max-w-3xl">
+  <div class="min-h-screen flex flex-col">
+    {% include '_header.html.twig' %}
+    <section class="container mx-auto px-6 py-12 max-w-3xl">
     <div class="text-center mb-8">
       <div class="inline-block bg-green-600 text-white w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-6">
         <i class="fas fa-check"></i>
@@ -65,5 +67,7 @@
         <i class="fas fa-gauge mr-2"></i>Go to Dashboard
       </a>
     </div>
-  </section>
+    </section>
+    {% include '_footer.html.twig' %}
+  </div>
 {% endblock %}

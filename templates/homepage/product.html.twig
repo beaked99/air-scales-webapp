@@ -3,6 +3,9 @@
 {% block title %}AirScales Product Details{% endblock %}
 
 {% block body %}
+<div class="min-h-screen flex flex-col">
+  {% include '_header.html.twig' %}
+
   <!-- Product Header -->
   <section class="bg-gray-800 py-12">
     <div class="container mx-auto px-6">
@@ -321,4 +324,7 @@
       </button>
     </div>
   </section>
+
+  {% include '_footer.html.twig' %}
+</div>
 {% endblock %}
