@@ -23,4 +23,22 @@ final class HomepageController extends AbstractController
             'controller_name' => 'HomepageController',
         ]);
     }
+
+    #[Route('/terms', name: 'terms_of_service')]
+    public function terms(): Response
+    {
+        return $this->render('legal/terms.html.twig');
+    }
+
+    #[Route('/privacy', name: 'privacy_policy')]
+    public function privacy(): Response
+    {
+        return $this->render('legal/privacy.html.twig');
+    }
+
+    #[Route('/faq', name: 'faq')]
+    public function faq(): Response
+    {
+        return $this->render('support/faq.html.twig');
+    }
 }

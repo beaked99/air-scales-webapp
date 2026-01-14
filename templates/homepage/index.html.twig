@@ -3,35 +3,6 @@
 {% block title %}AirScales - Real-Time Load Monitoring for Semi Trucks{% endblock %}
 
 {% block body %}
-<div class="bg-gray-900 text-gray-100 min-h-screen">
-  <!-- Navigation -->
-  <nav class="bg-gray-800 border-b border-gray-700">
-    <div class="container mx-auto px-6 py-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-8">
-          <a href="{{ path('app_homepage') }}" class="text-2xl font-bold text-blue-400">AirScales</a>
-          <div class="hidden md:flex space-x-6">
-            <a href="#features" class="text-gray-300 hover:text-blue-400 transition">Features</a>
-            <a href="#how-it-works" class="text-gray-300 hover:text-blue-400 transition">How It Works</a>
-            <a href="{{ path('product_details') }}" class="text-gray-300 hover:text-blue-400 transition">Product</a>
-            <a href="#app" class="text-gray-300 hover:text-blue-400 transition">Mobile App</a>
-          </div>
-        </div>
-        <div>
-          {% if app.user %}
-            <a href="{{ path('app_dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
-              <i class="fas fa-gauge mr-2"></i>Dashboard
-            </a>
-          {% else %}
-            <a href="{{ path('app_login') }}" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
-              <i class="fas fa-sign-in-alt mr-2"></i>Sign In
-            </a>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </nav>
-
   <!-- Hero Section -->
   <section class="container mx-auto px-6 py-20">
     <div class="grid md:grid-cols-2 gap-12 items-center">
@@ -42,12 +13,9 @@
         <p class="text-xl text-gray-400 mb-8">
           Monitor your truck's axle weights in real-time with AirScales. Bluetooth and WiFi-enabled load monitoring that keeps you legal and safe on the road.
         </p>
-        <div class="flex flex-col sm:flex-row gap-4">
-          <a href="{{ path('product_details') }}" class="bg-blue-600 hover:bg-blue-700 text-white text-center px-8 py-4 rounded-lg text-lg font-semibold transition">
+        <div>
+          <a href="{{ path('product_details') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-center px-8 py-4 rounded-lg text-lg font-semibold transition">
             <i class="fas fa-shopping-cart mr-2"></i>Order Your AirScales Today
-          </a>
-          <a href="#how-it-works" class="bg-gray-700 hover:bg-gray-600 text-white text-center px-8 py-4 rounded-lg text-lg font-semibold transition">
-            <i class="fas fa-info-circle mr-2"></i>Learn More
           </a>
         </div>
       </div>
@@ -78,7 +46,7 @@
           </div>
           <h3 class="text-2xl font-bold text-white mb-4">Wireless Connectivity</h3>
           <p class="text-gray-400">
-            Connect via Bluetooth or WiFi. Monitor from your phone, anywhere on your truck.
+            Devices communicate wirelessly so you can connect multiple AirScales for multiple trailers or varying configurations. One device per vehicle - no wires at kingpin or trailer hookup.
           </p>
         </div>
 
@@ -134,9 +102,9 @@
           <div class="bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6">
             1
           </div>
-          <h3 class="text-2xl font-bold text-white mb-4">Install on Your Truck</h3>
+          <h3 class="text-2xl font-bold text-white mb-4">Install on Your Truck or Trailer</h3>
           <p class="text-gray-400">
-            Connect AirScales to your truck's 12V power supply and air bag pressure sensors. Simple plug-and-play installation.
+            Connect AirScales to your 12V power supply and install the supplied T-fitting into the air supply for the air bags. Simple installation with no complex wiring.
           </p>
         </div>
 
@@ -146,7 +114,7 @@
           </div>
           <h3 class="text-2xl font-bold text-white mb-4">Connect via Bluetooth/WiFi</h3>
           <p class="text-gray-400">
-            Pair AirScales with your mobile device. Download the app and connect wirelessly.
+            Pair AirScales with your mobile device. Download the app and connect wirelessly. Subscription required for access to all features.
           </p>
         </div>
 
@@ -154,9 +122,9 @@
           <div class="bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6">
             3
           </div>
-          <h3 class="text-2xl font-bold text-white mb-4">Monitor Loads in Real-Time</h3>
+          <h3 class="text-2xl font-bold text-white mb-4">Calibrate and Monitor</h3>
           <p class="text-gray-400">
-            View live weight data from your phone. Track front and rear axle weights, get alerts, and stay compliant.
+            Calibrate and monitor axle group weights on both your semi and trailer(s). Get alerts, stay compliant, and avoid costly overload fines.
           </p>
         </div>
       </div>
@@ -193,53 +161,17 @@
   <section class="py-20">
     <div class="container mx-auto px-6 text-center">
       <h2 class="text-4xl font-bold text-white mb-8">Ready to Get Started?</h2>
-      <p class="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
+      <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
         Join professional truck drivers who trust AirScales for real-time load monitoring.
       </p>
+      <div class="bg-green-900/30 border border-green-500 rounded-lg p-4 max-w-2xl mx-auto mb-8">
+        <p class="text-green-400 font-semibold">
+          <i class="fas fa-gift mr-2"></i>New device purchase includes 6 months free subscription for 1 user!
+        </p>
+      </div>
       <a href="{{ path('product_details') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-12 py-4 rounded-lg text-xl font-semibold transition">
         <i class="fas fa-shopping-cart mr-2"></i>Order Your AirScales Today
       </a>
     </div>
   </section>
-
-  <!-- Footer -->
-  <footer class="bg-gray-800 border-t border-gray-700 py-12">
-    <div class="container mx-auto px-6">
-      <div class="grid md:grid-cols-4 gap-8">
-        <div>
-          <h3 class="text-xl font-bold text-white mb-4">AirScales</h3>
-          <p class="text-gray-400">
-            Real-time load monitoring for professional truck drivers.
-          </p>
-        </div>
-        <div>
-          <h4 class="text-lg font-semibold text-white mb-4">Product</h4>
-          <ul class="space-y-2">
-            <li><a href="#features" class="text-gray-400 hover:text-blue-400 transition">Features</a></li>
-            <li><a href="{{ path('product_details') }}" class="text-gray-400 hover:text-blue-400 transition">Product Details</a></li>
-            <li><a href="#how-it-works" class="text-gray-400 hover:text-blue-400 transition">How It Works</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="text-lg font-semibold text-white mb-4">Support</h4>
-          <ul class="space-y-2">
-            <li><a href="#" class="text-gray-400 hover:text-blue-400 transition">FAQ</a></li>
-            <li><a href="#" class="text-gray-400 hover:text-blue-400 transition">Contact Us</a></li>
-            <li><a href="#" class="text-gray-400 hover:text-blue-400 transition">Installation Guide</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="text-lg font-semibold text-white mb-4">Legal</h4>
-          <ul class="space-y-2">
-            <li><a href="#" class="text-gray-400 hover:text-blue-400 transition">Privacy Policy</a></li>
-            <li><a href="#" class="text-gray-400 hover:text-blue-400 transition">Terms of Service</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="border-t border-gray-700 mt-12 pt-8 text-center text-gray-400">
-        <p>&copy; {{ "now"|date("Y") }} Beaker.ca - AirScales. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
-</div>
 {% endblock %}

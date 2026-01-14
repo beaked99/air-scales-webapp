@@ -1,0 +1,372 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Frequently Asked Questions - AirScales{% endblock %}
+
+{% block body %}
+  <!-- Content -->
+  <div class="container mx-auto px-6 py-12 max-w-4xl">
+    <h1 class="text-4xl font-bold text-white mb-4">Frequently Asked Questions</h1>
+    <p class="text-gray-400 mb-8">Common questions about AirScales load monitoring system</p>
+
+    <div class="space-y-6">
+      <!-- Getting Started -->
+      <section class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-2xl font-bold text-blue-400 mb-6">Getting Started</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What is AirScales?</h3>
+            <p class="text-gray-300">
+              AirScales is a wireless load monitoring system that estimates vehicle weight by reading air bag pressure from your truck or trailer's air suspension system. It provides real-time weight estimates directly to your mobile device via Bluetooth or WiFi.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Do I need a subscription?</h3>
+            <p class="text-gray-300 mb-2">
+              Yes. A subscription is required to unlock all features of the mobile app including:
+            </p>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4">
+              <li>Real-time weight monitoring</li>
+              <li>Cloud data storage and sync</li>
+              <li>Historical data and reports</li>
+              <li>Custom alerts and notifications</li>
+              <li>Multi-device support</li>
+            </ul>
+            <p class="text-gray-300 mt-2">
+              <strong>Good news:</strong> New device purchases include 6 months free subscription for 1 user!
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">How accurate is AirScales?</h3>
+            <p class="text-gray-300 mb-2">
+              <strong class="text-yellow-400">Important:</strong> AirScales provides weight <strong>estimates</strong>, not certified measurements. Accuracy depends on several factors:
+            </p>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4">
+              <li>Proper calibration</li>
+              <li>Tire pressure</li>
+              <li>Suspension condition</li>
+              <li>Load distribution</li>
+              <li>Terrain and environmental conditions</li>
+            </ul>
+            <p class="text-gray-300 mt-2">
+              Always verify actual weight using certified scales before operating on public roads. AirScales is a guidance tool, not a legal weighing system.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Device Configuration -->
+      <section class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-2xl font-bold text-blue-400 mb-6">Device Configuration</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">How many devices do I need?</h3>
+            <p class="text-gray-300 mb-3">
+              <strong>Simple rule:</strong> One device per vehicle (truck or trailer). Each device can monitor up to 2 axle groups.
+            </p>
+            <div class="bg-gray-900 rounded-lg p-4 space-y-3">
+              <div>
+                <p class="text-white font-semibold">Single truck with single trailer:</p>
+                <p class="text-gray-300">2 devices total (1 for truck, 1 for trailer)</p>
+              </div>
+              <div>
+                <p class="text-white font-semibold">Super B-Train (truck + 2 trailers):</p>
+                <p class="text-gray-300">3 devices total (1 for truck, 1 for first trailer, 1 for second trailer)</p>
+              </div>
+              <div>
+                <p class="text-white font-semibold">Truck with quad-axle gravel trailer:</p>
+                <p class="text-gray-300">2 devices total to monitor 3 axle groups (truck drive axles, trailer front group, trailer rear group)</p>
+              </div>
+              <div>
+                <p class="text-white font-semibold">Day cab with single-axle trailer:</p>
+                <p class="text-gray-300">2 devices total (single sensor per device is fine if monitoring single axles)</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Single sensor or dual sensor configuration?</h3>
+            <p class="text-gray-300 mb-2">
+              Each AirScales device supports 1 or 2 pressure sensors:
+            </p>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4 mb-3">
+              <li><strong>Single sensor:</strong> Monitor one axle group (front or rear)</li>
+              <li><strong>Dual sensor:</strong> Monitor two axle groups (front AND rear) with one device</li>
+            </ul>
+            <p class="text-gray-300">
+              Most customers choose dual sensor configuration to monitor both axle groups on their truck or trailer with a single device.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Do I need wires between my truck and trailer?</h3>
+            <p class="text-gray-300">
+              <strong>No!</strong> All AirScales devices communicate wirelessly with your phone. There are no wires at the kingpin or trailer hookup. Each device is self-contained on its respective vehicle.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Installation -->
+      <section class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-2xl font-bold text-blue-400 mb-6">Installation</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">How do I install AirScales?</h3>
+            <p class="text-gray-300 mb-2">
+              Installation is straightforward:
+            </p>
+            <ol class="list-decimal list-inside text-gray-300 space-y-2 ml-4">
+              <li>Connect the device to your vehicle's 12V power supply</li>
+              <li>Install the supplied T-fitting into the air supply line for each air bag you want to monitor</li>
+              <li>Connect pressure sensor lines from the device to the T-fittings</li>
+              <li>Mount the device in a secure location</li>
+              <li>Download the mobile app and pair via Bluetooth</li>
+            </ol>
+            <p class="text-gray-300 mt-3">
+              No complex wiring or special tools required. Most installations take 30-60 minutes per vehicle.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Can I install it myself?</h3>
+            <p class="text-gray-300">
+              Yes! If you're comfortable with basic mechanical work and have installed accessories on your truck before, you can install AirScales yourself. The installation guide includes step-by-step instructions with photos. Otherwise, any truck mechanic or shop can install it for you.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What if I switch trailers frequently?</h3>
+            <p class="text-gray-300">
+              Perfect use case! Since each trailer has its own AirScales device, you can monitor any trailer configuration. The app automatically detects and connects to all nearby AirScales devices. Drop a trailer? The app shows only your truck. Hook up a different trailer? It automatically appears in the app.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Calibration -->
+      <section class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-2xl font-bold text-blue-400 mb-6">Calibration</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Do I need to calibrate AirScales?</h3>
+            <p class="text-gray-300">
+              <strong>Yes, absolutely!</strong> Proper calibration is critical for accurate weight estimates. AirScales uses air pressure to estimate weight, but the relationship between pressure and weight varies by vehicle, suspension type, tire pressure, and other factors.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">How do I calibrate AirScales?</h3>
+            <p class="text-gray-300 mb-2">
+              Calibration requires two known weight points:
+            </p>
+            <ol class="list-decimal list-inside text-gray-300 space-y-2 ml-4 mb-3">
+              <li><strong>Empty weight:</strong> Weigh your vehicle empty at a certified scale, then record the pressure reading in the app</li>
+              <li><strong>Loaded weight:</strong> Weigh your vehicle with a known load at a certified scale, then record the pressure reading in the app</li>
+            </ol>
+            <p class="text-gray-300 mb-3">
+              The app uses these two points to calculate the weight-to-pressure relationship for your specific setup.
+            </p>
+            <p class="text-gray-300">
+              <strong>Pro tip:</strong> For best accuracy, use a load as close to your typical maximum weight as possible for the second calibration point.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">How often should I recalibrate?</h3>
+            <p class="text-gray-300 mb-2">
+              Recalibrate when:
+            </p>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4">
+              <li>You notice readings seem off compared to scale weights</li>
+              <li>You change tire pressure significantly</li>
+              <li>You replace suspension components</li>
+              <li>You change tire size or type</li>
+              <li>Seasonal changes (winter vs summer can affect readings)</li>
+            </ul>
+            <p class="text-gray-300 mt-3">
+              A good practice is to verify and recalibrate every 3-6 months or when hauling critical loads.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What if I haul different types of loads?</h3>
+            <p class="text-gray-300">
+              The app allows you to save multiple calibration profiles. For example, you might have one profile for flatbed loads (centered weight) and another for dry van loads (rear-heavy). Switch between profiles based on your current load type.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Using the App -->
+      <section class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-2xl font-bold text-blue-400 mb-6">Using the App</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What features require a subscription?</h3>
+            <p class="text-gray-300 mb-2">
+              Without a subscription, the app has very limited functionality. An active subscription is required for:
+            </p>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4">
+              <li>Real-time weight monitoring</li>
+              <li>Viewing historical weight data</li>
+              <li>Cloud storage and sync across devices</li>
+              <li>Custom alerts (overweight warnings, etc.)</li>
+              <li>Data export and reporting</li>
+              <li>Multi-device management</li>
+            </ul>
+            <p class="text-gray-300 mt-3">
+              <strong>Device purchasers get 6 months free!</strong> After that, plans start at just $5/month.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Can I use AirScales without internet?</h3>
+            <p class="text-gray-300">
+              Yes! AirScales works via Bluetooth even without cellular data or WiFi. However, some features require internet:
+            </p>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4 mt-2">
+              <li><strong>Works offline:</strong> Real-time weight readings, local data storage</li>
+              <li><strong>Requires internet:</strong> Cloud sync, historical data access from other devices, remote monitoring</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Can I monitor my truck remotely?</h3>
+            <p class="text-gray-300">
+              If your AirScales device is connected to WiFi (or you have a WiFi-enabled device in range), you can monitor your vehicle weights from anywhere via the web app at beaker.ca. Great for fleet managers or checking weights while loading.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Does the app track my location?</h3>
+            <p class="text-gray-300">
+              <strong>Location tracking is completely optional.</strong> If you enable it, the app can tag weight readings with GPS coordinates so you know where each measurement was taken. You can disable location services entirely in your phone settings - AirScales will work fine without it.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Technical & Troubleshooting -->
+      <section class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-2xl font-bold text-blue-400 mb-6">Technical & Troubleshooting</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What happens if my device loses power?</h3>
+            <p class="text-gray-300">
+              Your calibration and settings are stored in the device's memory and won't be lost. When power is restored, the device will automatically reconnect to your phone.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">The app says "Updated 6 hours ago" instead of showing live data. Why?</h3>
+            <p class="text-gray-300 mb-2">
+              This usually means the device isn't actively connected. Common causes:
+            </p>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4">
+              <li>Device is powered off or lost 12V power</li>
+              <li>Bluetooth is disabled on your phone</li>
+              <li>Device is out of Bluetooth range (typically 30-50 feet)</li>
+              <li>Another phone is connected to the device (only one connection at a time)</li>
+            </ul>
+            <p class="text-gray-300 mt-2">
+              Check the device status indicator in the app - it should show "LIVE" with a green badge when actively connected.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Can I use one subscription for multiple trucks?</h3>
+            <p class="text-gray-300">
+              One subscription covers one user account. Your account can manage multiple devices (all your trucks and trailers), but you can only be logged in on one phone at a time. If you have multiple drivers or phones, each needs their own subscription.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What if I sell my truck or trailer?</h3>
+            <p class="text-gray-300">
+              You can remove the AirScales device and transfer it to your new truck/trailer. Just unbolt it and reinstall on the new vehicle. You'll need to recalibrate for the new vehicle, but all your subscription and account info stays the same.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">Is AirScales weatherproof?</h3>
+            <p class="text-gray-300">
+              Yes, AirScales devices are designed for harsh trucking environments. However, mount the device in a location protected from direct water spray (under the frame, in a fairing, etc.) for best longevity.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Purchasing & Support -->
+      <section class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-2xl font-bold text-blue-400 mb-6">Purchasing & Support</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">How much does AirScales cost?</h3>
+            <p class="text-gray-300">
+              Contact us for current pricing on devices. Subscriptions are $5/month or $50/year (save $10/year). New device purchases include 6 months free subscription.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What's included with my device purchase?</h3>
+            <ul class="list-disc list-inside text-gray-300 space-y-1 ml-4">
+              <li>AirScales main device unit</li>
+              <li>12V power cable with fuse protection</li>
+              <li>Pressure sensor(s) - 1 or 2 depending on configuration</li>
+              <li>T-fittings for air line installation</li>
+              <li>Mounting hardware</li>
+              <li>Installation guide</li>
+              <li>6 months free subscription (1 user)</li>
+              <li>1-year limited warranty</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">What's the return policy?</h3>
+            <p class="text-gray-300">
+              Device returns must be requested within 30 days of purchase. Devices must be in original condition with all components and packaging. A restocking fee may apply.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-3">How do I get support?</h3>
+            <p class="text-gray-300">
+              For technical support or questions:
+            </p>
+            <ul class="list-none text-gray-300 space-y-1 mt-2">
+              <li><i class="fas fa-envelope text-blue-400 mr-2"></i>Email: support@beaker.ca</li>
+              <li><i class="fas fa-globe text-blue-400 mr-2"></i>Website: beaker.ca</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Still Have Questions? -->
+    <div class="mt-12 bg-blue-900/30 border border-blue-500 rounded-lg p-8 text-center">
+      <h2 class="text-2xl font-bold text-white mb-4">Still Have Questions?</h2>
+      <p class="text-gray-300 mb-6">
+        Can't find what you're looking for? Contact our support team for help.
+      </p>
+      <a href="mailto:support@beaker.ca" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition">
+        <i class="fas fa-envelope mr-2"></i>Contact Support
+      </a>
+    </div>
+
+    <!-- Back to Home -->
+    <div class="mt-8 text-center">
+      <a href="{{ path('app_homepage') }}" class="inline-block bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Home
+      </a>
+    </div>
+  </div>
+{% endblock %}
