@@ -4,6 +4,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Device;
+use App\Entity\Faq;
 use App\Entity\User;
 use App\Entity\Vehicle;
 use App\Entity\Settings;
@@ -68,6 +69,8 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkToCrud('Orders', 'fas fa-box', Order::class);
         yield MenuItem::linkToCrud('Products', 'fas fa-tag', Product::class);
         yield MenuItem::linkToCrud('Pricing & Settings', 'fas fa-dollar-sign', Settings::class);
+        yield MenuItem::section('Content Management');
+        yield MenuItem::linkToCrud('FAQ Sections', 'fas fa-question-circle', Faq::class);
         yield MenuItem::section('User Management');
         yield MenuItem::linkToCrud('Users', 'fas fa-users', User::class);
         yield MenuItem::section('Hardware');
