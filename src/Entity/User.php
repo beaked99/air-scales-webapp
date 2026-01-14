@@ -48,6 +48,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $stripe_customer_id = null;
 
+    #[ORM\Column(type: 'boolean')]
+    private bool $isVerified = false;
+
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $verificationToken = null;
+
     #[ORM\OneToMany(targetEntity: Device::class, mappedBy: 'soldTo')]
     private Collection $devices;
 
@@ -67,6 +73,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->devices = new ArrayCollection();
         $this->vehicles = new ArrayCollection();
         $this->vehiclesUpdated = new ArrayCollection();
+        $this->created_at = new \DateTimeImmutable();
+    }
+
+    #[ORM\PrePersist]
+    public function setCreatedAtValue(): void
+    {
+        if ($this->created_at === null) {
+            $this->created_at = new \DateTimeImmutable();
+        }
+    }
+
+    #[ORM\PreUpdate]
+    public function setUpdatedAtValue(): void
+    {
+        $this->updated_at = new \DateTimeImmutable();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -270,5 +291,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return $this->subscription->hasActiveAccess();
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): static
+    {
+        $this->isVerified = $isVerified;
+        return $this;
+    }
+
+    public function getVerificationToken(): ?string
+    {
+        return $this->verificationToken;
+    }
+
+    public function setVerificationToken(?string $verificationToken): static
+    {
+        $this->verificationToken = $verificationToken;
+        return $this;
     }
 }

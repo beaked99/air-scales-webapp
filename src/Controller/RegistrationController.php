@@ -5,11 +5,16 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Security\LoginAuthenticator;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Address;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface;
 
 class RegistrationController extends AbstractController
@@ -20,7 +25,9 @@ class RegistrationController extends AbstractController
         UserPasswordHasherInterface $passwordHasher,
         EntityManagerInterface $entityManager,
         UserAuthenticatorInterface $userAuthenticator,
-        LoginAuthenticator $authenticator
+        LoginAuthenticator $authenticator,
+        RateLimiterFactory $registrationLimiter,
+        MailerInterface $mailer
     ): Response {
         // Redirect if already logged in
         if ($this->getUser()) {
@@ -30,6 +37,30 @@ class RegistrationController extends AbstractController
         $error = null;
 
         if ($request->isMethod('POST')) {
+            // Rate limiting check (3 attempts per 15 minutes per IP)
+            $limiter = $registrationLimiter->create($request->getClientIp());
+            if (false === $limiter->consume(1)->isAccepted()) {
+                $error = 'Too many registration attempts. Please try again in 15 minutes.';
+                return $this->render('security/register.html.twig', ['error' => $error]);
+            }
+
+            // Bot detection - Honeypot check
+            $honeypot = $request->request->get('website');
+            if (!empty($honeypot)) {
+                // Bot detected - silently reject by showing fake success
+                return $this->render('security/register.html.twig', [
+                    'error' => 'Registration successful! Please check your email to verify your account.'
+                ]);
+            }
+
+            // Bot detection - Time check (minimum 3 seconds to fill form)
+            $formStartTime = (int) $request->request->get('form_start_time');
+            $timeTaken = time() - $formStartTime;
+            if ($timeTaken < 3) {
+                $error = 'Please take your time filling out the form.';
+                return $this->render('security/register.html.twig', ['error' => $error]);
+            }
+
             $email = $request->request->get('email');
             $password = $request->request->get('password');
             $passwordConfirm = $request->request->get('password_confirm');
@@ -62,16 +93,41 @@ class RegistrationController extends AbstractController
                     $hashedPassword = $passwordHasher->hashPassword($user, $password);
                     $user->setPassword($hashedPassword);
 
+                    // Set email verification fields
+                    $user->setIsVerified(false);
+                    $user->setVerificationToken(bin2hex(random_bytes(32)));
+
                     // Persist to database
                     $entityManager->persist($user);
                     $entityManager->flush();
 
-                    // Automatically log in the user
-                    return $userAuthenticator->authenticateUser(
-                        $user,
-                        $authenticator,
-                        $request
-                    );
+                    // Send verification email
+                    $verificationUrl = $this->generateUrl('app_verify_email', [
+                        'token' => $user->getVerificationToken()
+                    ], UrlGeneratorInterface::ABSOLUTE_URL);
+
+                    $email = (new TemplatedEmail())
+                        ->from(new Address(
+                            $_ENV['MAILER_FROM_EMAIL'] ?? 'noreply@airscales.com',
+                            $_ENV['MAILER_FROM_NAME'] ?? 'AirScales'
+                        ))
+                        ->to($user->getEmail())
+                        ->subject('Verify your AirScales account')
+                        ->htmlTemplate('emails/verification.html.twig')
+                        ->context([
+                            'user' => $user,
+                            'verificationUrl' => $verificationUrl
+                        ]);
+
+                    try {
+                        $mailer->send($email);
+                        $this->addFlash('success', 'Registration successful! Please check your email to verify your account.');
+                    } catch (\Exception $e) {
+                        $this->addFlash('warning', 'Account created, but we could not send the verification email. Please contact support.');
+                    }
+
+                    // Redirect to login instead of auto-login since email needs verification
+                    return $this->redirectToRoute('app_login');
                 }
             }
         }

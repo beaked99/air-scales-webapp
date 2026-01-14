@@ -18,6 +18,12 @@
       {% endif %}
 
       <form method="post" action="{{ path('app_register') }}">
+        <!-- Honeypot field (hidden from humans, bots will fill it) -->
+        <input type="text" name="website" value="" style="position:absolute;left:-5000px" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+        <!-- Time tracking (detect instant form submissions) -->
+        <input type="hidden" name="form_start_time" value="{{ "now"|date('U') }}">
+
         <div class="space-y-4">
           <!-- First Name -->
           <div>
