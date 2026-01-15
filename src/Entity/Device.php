@@ -44,6 +44,16 @@ class Device
     private ?User $soldTo = null;
 
     #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $firstActivatedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: "first_activated_by_id", referencedColumnName: "id", nullable: true)]
+    private ?User $firstActivatedBy = null;
+
+    #[ORM\Column(type: 'boolean')]
+    private bool $subscriptionGranted = false;
+
+    #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $orderDate = null;
 
     #[ORM\Column(nullable: true)]
@@ -122,6 +132,16 @@ class Device
     public function setFirmwareVersion(?string $firmwareVersion): static { $this->firmwareVersion = $firmwareVersion; return $this; }
     public function getSoldTo(): ?User { return $this->soldTo; }
     public function setSoldTo(?User $soldTo): static { $this->soldTo = $soldTo; return $this; }
+
+    public function getFirstActivatedAt(): ?\DateTimeImmutable { return $this->firstActivatedAt; }
+    public function setFirstActivatedAt(?\DateTimeImmutable $firstActivatedAt): static { $this->firstActivatedAt = $firstActivatedAt; return $this; }
+
+    public function getFirstActivatedBy(): ?User { return $this->firstActivatedBy; }
+    public function setFirstActivatedBy(?User $firstActivatedBy): static { $this->firstActivatedBy = $firstActivatedBy; return $this; }
+
+    public function isSubscriptionGranted(): bool { return $this->subscriptionGranted; }
+    public function setSubscriptionGranted(bool $subscriptionGranted): static { $this->subscriptionGranted = $subscriptionGranted; return $this; }
+
     public function getOrderDate(): ?\DateTimeImmutable { return $this->orderDate; }
     public function setOrderDate(?\DateTimeImmutable $orderDate): static { $this->orderDate = $orderDate; return $this; }
     public function getShipDate(): ?\DateTimeImmutable { return $this->shipDate; }
@@ -206,6 +226,17 @@ class Device
     public function isMeshMaster(): bool { return $this->currentRole === 'master'; }
     public function isMeshSlave(): bool { return $this->currentRole === 'slave'; }
     public function isInMeshNetwork(): bool { return in_array($this->currentRole, ['master', 'slave']); }
+
+    // Device claiming helper methods
+    public function canBeClaimed(): bool
+    {
+        return $this->soldTo === null && $this->subscriptionGranted === false;
+    }
+
+    public function isClaimed(): bool
+    {
+        return $this->soldTo !== null || $this->firstActivatedBy !== null;
+    }
 
     // Display methods
     public function __toString(): string
