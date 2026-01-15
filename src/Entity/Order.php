@@ -129,6 +129,38 @@ class Order
         return $this->user ? ($this->user->getFirstName() . ' ' . $this->user->getLastName()) : ($this->guestName ?? '');
     }
 
+    public function getItemsSummary(): string
+    {
+        if (!$this->orderItems) {
+            return $this->product ? $this->product->getName() : 'N/A';
+        }
+
+        $items = [];
+        foreach ($this->orderItems as $item) {
+            $items[] = sprintf('%dx %s', $item['quantity'], $item['product_name']);
+        }
+        return implode(', ', $items);
+    }
+
+    public function getOrderItemsDisplay(): string
+    {
+        if (!$this->orderItems) {
+            return $this->product ? $this->product->getName() : 'N/A';
+        }
+
+        $lines = [];
+        foreach ($this->orderItems as $item) {
+            $lines[] = sprintf(
+                '%dx %s @ $%s = $%s',
+                $item['quantity'],
+                $item['product_name'],
+                number_format($item['unit_price'], 2),
+                number_format($item['line_total'], 2)
+            );
+        }
+        return implode("\n", $lines);
+    }
+
     public function getProduct(): ?Product
     {
         return $this->product;

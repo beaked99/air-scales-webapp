@@ -70,37 +70,9 @@ class OrderCrudController extends AbstractCrudController
 
         // Order Items - display line items from JSON
         if ($pageName === Crud::PAGE_INDEX) {
-            yield TextField::new('itemsSummary', 'Items')
-                ->formatValue(function ($value, Order $entity) {
-                    if (!$entity->getOrderItems()) {
-                        return $entity->getProduct() ? $entity->getProduct()->getName() : 'N/A';
-                    }
-
-                    $items = [];
-                    foreach ($entity->getOrderItems() as $item) {
-                        $items[] = sprintf('%dx %s', $item['quantity'], $item['product_name']);
-                    }
-                    return implode(', ', $items);
-                });
+            yield TextField::new('itemsSummary', 'Items');
         } else {
             yield TextareaField::new('orderItemsDisplay', 'Items Ordered')
-                ->formatValue(function ($value, Order $entity) {
-                    if (!$entity->getOrderItems()) {
-                        return $entity->getProduct() ? $entity->getProduct()->getName() : 'N/A';
-                    }
-
-                    $lines = [];
-                    foreach ($entity->getOrderItems() as $item) {
-                        $lines[] = sprintf(
-                            '%dx %s @ $%s = $%s',
-                            $item['quantity'],
-                            $item['product_name'],
-                            number_format($item['unit_price'], 2),
-                            number_format($item['line_total'], 2)
-                        );
-                    }
-                    return implode("\n", $lines);
-                })
                 ->hideOnForm()
                 ->setTemplatePath('admin/field/text_readonly.html.twig');
         }
