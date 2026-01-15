@@ -12,6 +12,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
@@ -47,16 +48,65 @@ class OrderCrudController extends AbstractCrudController
         yield IdField::new('id', 'Order #')
             ->onlyOnIndex();
 
-        yield AssociationField::new('user', 'Customer')
-            ->formatValue(function ($value, $entity) {
-                return $entity->getUser()->getFullName() . ' (' . $entity->getUser()->getEmail() . ')';
-            });
+        // Customer info - handles both users and guests
+        yield TextField::new('customerName', 'Customer')
+            ->formatValue(function ($value, Order $entity) {
+                $name = $entity->getCustomerName();
+                $email = $entity->getCustomerEmail();
+                $type = $entity->getUser() ? '(Registered)' : '(Guest)';
+                return $name . ' ' . $type . ' - ' . $email;
+            })
+            ->hideOnForm();
 
-        yield AssociationField::new('product', 'Product');
+        yield TextField::new('guestName', 'Guest Name')
+            ->onlyOnDetail()
+            ->setHelp('Only for guest orders');
 
-        yield IntegerField::new('quantity', 'Qty');
+        yield TextField::new('guestEmail', 'Guest Email')
+            ->onlyOnDetail()
+            ->setHelp('Only for guest orders');
 
-        yield MoneyField::new('totalPaid', 'Total')
+        yield AssociationField::new('user', 'Registered User')
+            ->onlyOnDetail();
+
+        // Order Items - display line items from JSON
+        yield ArrayField::new('orderItems', 'Items')
+            ->formatValue(function ($value, Order $entity) {
+                if (!$entity->getOrderItems()) {
+                    // Fallback for old single-product orders
+                    return $entity->getProduct() ? $entity->getProduct()->getName() : 'N/A';
+                }
+
+                $items = [];
+                foreach ($entity->getOrderItems() as $item) {
+                    $items[] = sprintf(
+                        '%dx %s @ $%s = $%s',
+                        $item['quantity'],
+                        $item['product_name'],
+                        number_format($item['unit_price'], 2),
+                        number_format($item['line_total'], 2)
+                    );
+                }
+                return implode(' | ', $items);
+            })
+            ->hideOnForm();
+
+        yield IntegerField::new('quantity', 'Total Qty')
+            ->setHelp('Total number of devices');
+
+        yield MoneyField::new('subtotal', 'Subtotal')
+            ->setCurrency('USD')
+            ->setStoredAsCents(false)
+            ->hideOnIndex()
+            ->setHelp('Total before discounts');
+
+        yield MoneyField::new('discountAmount', 'Discount')
+            ->setCurrency('USD')
+            ->setStoredAsCents(false)
+            ->hideOnIndex()
+            ->setHelp('Volume discount applied');
+
+        yield MoneyField::new('totalPaid', 'Total Paid')
             ->setCurrency('USD')
             ->setStoredAsCents(false);
 
