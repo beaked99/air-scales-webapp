@@ -24,11 +24,20 @@ class Order
     private ?string $guestName = null;
 
     #[ORM\ManyToOne(targetEntity: Product::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    private Product $product;
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Product $product = null;
 
     #[ORM\Column]
     private int $quantity = 1;
+
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $orderItems = null; // Store multiple line items: [{"product_id": 1, "quantity": 2, "price": 150.00}, ...]
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
+    private ?string $subtotal = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
+    private ?string $discountAmount = null;
 
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     private string $totalPaid;
@@ -120,14 +129,47 @@ class Order
         return $this->user ? ($this->user->getFirstName() . ' ' . $this->user->getLastName()) : ($this->guestName ?? '');
     }
 
-    public function getProduct(): Product
+    public function getProduct(): ?Product
     {
         return $this->product;
     }
 
-    public function setProduct(Product $product): static
+    public function setProduct(?Product $product): static
     {
         $this->product = $product;
+        return $this;
+    }
+
+    public function getOrderItems(): ?array
+    {
+        return $this->orderItems;
+    }
+
+    public function setOrderItems(?array $orderItems): static
+    {
+        $this->orderItems = $orderItems;
+        return $this;
+    }
+
+    public function getSubtotal(): ?string
+    {
+        return $this->subtotal;
+    }
+
+    public function setSubtotal(?string $subtotal): static
+    {
+        $this->subtotal = $subtotal;
+        return $this;
+    }
+
+    public function getDiscountAmount(): ?string
+    {
+        return $this->discountAmount;
+    }
+
+    public function setDiscountAmount(?string $discountAmount): static
+    {
+        $this->discountAmount = $discountAmount;
         return $this;
     }
 

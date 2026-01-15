@@ -35,8 +35,8 @@ final class OrderController extends AbstractController
         $user = $this->getUser();
 
         // Get form data
-        $deviceType = $request->request->get('device_type'); // 'single' or 'dual'
-        $quantity = (int) $request->request->get('quantity', 1);
+        $quantitySingle = (int) $request->request->get('quantity_single', 0);
+        $quantityDual = (int) $request->request->get('quantity_dual', 0);
         $guestEmail = $request->request->get('email');
         $guestName = $request->request->get('name');
         $shippingAddress = $request->request->get('shipping_address');
@@ -45,10 +45,17 @@ final class OrderController extends AbstractController
         $shippingZip = $request->request->get('shipping_zip');
         $shippingCountry = $request->request->get('shipping_country', 'US');
 
+        // Validate at least one device is selected
+        $totalDevices = $quantitySingle + $quantityDual;
+        if ($totalDevices === 0) {
+            $this->addFlash('error', 'Please select at least one device.');
+            return $this->redirectToRoute('order_create');
+        }
+
         // If not logged in, require guest email and name
         if (!$user && (empty($guestEmail) || empty($guestName))) {
             $this->addFlash('error', 'Please provide your email and name.');
-            return $this->redirectToRoute('order_create', ['type' => $deviceType]);
+            return $this->redirectToRoute('order_create');
         }
 
         // Combine shipping address
@@ -61,13 +68,53 @@ final class OrderController extends AbstractController
             $shippingCountry
         );
 
-        // Find the product based on device type
-        $productSlug = $deviceType === 'dual' ? 'device-dual-sensor' : 'device-single-sensor';
-        $product = $this->em->getRepository(Product::class)->findOneBy(['slug' => $productSlug, 'isActive' => true]);
+        // Fetch products
+        $productSingle = $this->em->getRepository(Product::class)->findOneBy(['slug' => 'device-single-sensor', 'isActive' => true]);
+        $productDual = $this->em->getRepository(Product::class)->findOneBy(['slug' => 'device-dual-sensor', 'isActive' => true]);
 
-        if (!$product) {
-            $this->addFlash('error', 'Product not found. Please contact support.');
+        if (($quantitySingle > 0 && !$productSingle) || ($quantityDual > 0 && !$productDual)) {
+            $this->addFlash('error', 'One or more products not found. Please contact support at kevin@beaker.ca');
             return $this->redirectToRoute('order_create');
+        }
+
+        // Calculate pricing
+        $priceSingle = $productSingle ? (float) $productSingle->getPriceUsd() : 150.00;
+        $priceDual = $productDual ? (float) $productDual->getPriceUsd() : 225.00;
+
+        $subtotal = ($quantitySingle * $priceSingle) + ($quantityDual * $priceDual);
+
+        // Apply quantity discount
+        $discountPercent = 0;
+        if ($totalDevices >= 3) {
+            $discountPercent = 15;
+        } elseif ($totalDevices >= 2) {
+            $discountPercent = 10;
+        }
+
+        $discountAmount = $subtotal * ($discountPercent / 100);
+        $total = $subtotal - $discountAmount;
+
+        // Build order items array
+        $orderItems = [];
+        if ($quantitySingle > 0) {
+            $orderItems[] = [
+                'product_id' => $productSingle->getId(),
+                'product_name' => $productSingle->getName(),
+                'slug' => 'device-single-sensor',
+                'quantity' => $quantitySingle,
+                'unit_price' => $priceSingle,
+                'line_total' => $quantitySingle * $priceSingle,
+            ];
+        }
+        if ($quantityDual > 0) {
+            $orderItems[] = [
+                'product_id' => $productDual->getId(),
+                'product_name' => $productDual->getName(),
+                'slug' => 'device-dual-sensor',
+                'quantity' => $quantityDual,
+                'unit_price' => $priceDual,
+                'line_total' => $quantityDual * $priceDual,
+            ];
         }
 
         // Create order in database
@@ -78,9 +125,11 @@ final class OrderController extends AbstractController
             $order->setGuestEmail($guestEmail);
             $order->setGuestName($guestName);
         }
-        $order->setProduct($product);
-        $order->setQuantity($quantity);
-        $order->setTotalPaid('0.00'); // Will be updated after payment
+        $order->setOrderItems($orderItems);
+        $order->setQuantity($totalDevices);
+        $order->setSubtotal(number_format($subtotal, 2, '.', ''));
+        $order->setDiscountAmount(number_format($discountAmount, 2, '.', ''));
+        $order->setTotalPaid(number_format($total, 2, '.', ''));
         $order->setStatus('pending');
         $order->setShippingAddress($fullShippingAddress);
 
@@ -91,25 +140,40 @@ final class OrderController extends AbstractController
         $stripeSecretKey = $this->getParameter('stripe_secret_key');
         Stripe::setApiKey($stripeSecretKey);
 
-        // Calculate total price
-        $unitPrice = (float) $product->getPriceUsd();
-        $totalPrice = $unitPrice * $quantity;
+        // Build Stripe line items
+        $stripeLineItems = [];
+        foreach ($orderItems as $item) {
+            $stripeLineItems[] = [
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => [
+                        'name' => $item['product_name'],
+                    ],
+                    'unit_amount' => (int) ($item['unit_price'] * 100), // Stripe uses cents
+                ],
+                'quantity' => $item['quantity'],
+            ];
+        }
+
+        // Add discount as a separate line item if applicable
+        if ($discountAmount > 0) {
+            $stripeLineItems[] = [
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => [
+                        'name' => "Volume Discount ({$discountPercent}% off {$totalDevices} devices)",
+                    ],
+                    'unit_amount' => -(int) ($discountAmount * 100), // Negative amount for discount
+                ],
+                'quantity' => 1,
+            ];
+        }
 
         // Create Stripe Checkout Session
         try {
             $checkoutSession = StripeSession::create([
                 'payment_method_types' => ['card'],
-                'line_items' => [[
-                    'price_data' => [
-                        'currency' => 'usd',
-                        'product_data' => [
-                            'name' => $product->getName(),
-                            'description' => $product->getDescription(),
-                        ],
-                        'unit_amount' => (int) ($unitPrice * 100), // Stripe uses cents
-                    ],
-                    'quantity' => $quantity,
-                ]],
+                'line_items' => $stripeLineItems,
                 'mode' => 'payment',
                 'success_url' => $this->generateUrl('order_success', ['order_id' => $order->getId()], 0),
                 'cancel_url' => $this->generateUrl('order_cancel', ['order_id' => $order->getId()], 0),
@@ -117,6 +181,8 @@ final class OrderController extends AbstractController
                 'metadata' => [
                     'order_id' => $order->getId(),
                     'is_guest' => $user ? 'false' : 'true',
+                    'total_devices' => $totalDevices,
+                    'discount_percent' => $discountPercent,
                 ],
             ]);
 

@@ -10,6 +10,14 @@
     <h1 class="text-4xl font-bold text-white mb-4">Pre-Order Your AirScales</h1>
     <p class="text-gray-400 mb-8">Complete your order and we will ship your device within 3-5 months.</p>
 
+    {% for message in app.flashes('error') %}
+      <div class="bg-red-900/30 border border-red-500 rounded-lg p-4 mb-8">
+        <p class="text-red-400">
+          <i class="fas fa-exclamation-circle mr-2"></i>{{ message }}
+        </p>
+      </div>
+    {% endfor %}
+
     {% if app.user %}
       <div class="bg-blue-900/30 border border-blue-500 rounded-lg p-4 mb-8">
         <p class="text-blue-400">
@@ -41,52 +49,158 @@
       {% endif %}
         <!-- Device Configuration -->
         <div class="mb-8">
-          <h2 class="text-2xl font-bold text-white mb-6">Device Configuration</h2>
+          <h2 class="text-2xl font-bold text-white mb-6">Select Your Devices</h2>
+          <p class="text-gray-400 text-sm mb-6">Choose quantities for one or both device types. Discounts apply automatically for 2+ devices!</p>
 
           <div class="grid md:grid-cols-2 gap-6">
             <!-- Single Sensor -->
-            <label class="cursor-pointer">
-              <input type="radio" name="device_type" value="single" {% if device_type == 'single' %}checked{% endif %} class="hidden peer">
-              <div class="bg-gray-900 border-2 border-gray-700 peer-checked:border-blue-500 rounded-lg p-6 transition hover:border-gray-600">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-xl font-bold text-white">Single Sensor</h3>
-                  <i class="fas fa-gauge text-3xl text-blue-400"></i>
-                </div>
-                <p class="text-gray-400 text-sm mb-4">Monitor one axle group</p>
-                <div class="text-blue-400 font-semibold text-2xl">$150 <span class="text-sm text-gray-400">USD</span></div>
+            <div class="bg-gray-900 border-2 border-gray-700 rounded-lg p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-white">Single Sensor</h3>
+                <i class="fas fa-gauge text-3xl text-blue-400"></i>
               </div>
-            </label>
+              <p class="text-gray-400 text-sm mb-4">Monitor one axle group</p>
+              <div class="text-blue-400 font-semibold text-2xl mb-4">$150 <span class="text-sm text-gray-400">USD each</span></div>
+
+              <div>
+                <label for="quantity_single" class="block text-white font-semibold mb-2">Quantity</label>
+                <input
+                  type="number"
+                  id="quantity_single"
+                  name="quantity_single"
+                  value="0"
+                  min="0"
+                  max="10"
+                  class="w-full bg-gray-800 border border-gray-600 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onchange="updateOrderTotal()"
+                >
+              </div>
+            </div>
 
             <!-- Dual Sensor -->
-            <label class="cursor-pointer">
-              <input type="radio" name="device_type" value="dual" {% if device_type == 'dual' %}checked{% endif %} class="hidden peer">
-              <div class="bg-gray-900 border-2 border-gray-700 peer-checked:border-blue-500 rounded-lg p-6 transition hover:border-gray-600">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-xl font-bold text-white">Dual Sensor</h3>
-                  <i class="fas fa-gauge text-3xl text-blue-400"></i>
-                </div>
-                <p class="text-gray-400 text-sm mb-4">Monitor two axle groups (front & rear)</p>
-                <div class="text-blue-400 font-semibold text-2xl">$225 <span class="text-sm text-gray-400">USD</span></div>
+            <div class="bg-gray-900 border-2 border-gray-700 rounded-lg p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-white">Dual Sensor</h3>
+                <i class="fas fa-gauge text-3xl text-blue-400"></i>
               </div>
-            </label>
+              <p class="text-gray-400 text-sm mb-4">Monitor two axle groups (front & rear)</p>
+              <div class="text-blue-400 font-semibold text-2xl mb-4">$225 <span class="text-sm text-gray-400">USD each</span></div>
+
+              <div>
+                <label for="quantity_dual" class="block text-white font-semibold mb-2">Quantity</label>
+                <input
+                  type="number"
+                  id="quantity_dual"
+                  name="quantity_dual"
+                  value="0"
+                  min="0"
+                  max="10"
+                  class="w-full bg-gray-800 border border-gray-600 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onchange="updateOrderTotal()"
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Summary -->
+          <div id="order-summary" class="mt-6 bg-gray-900 border border-gray-700 rounded-lg p-6 hidden">
+            <h3 class="text-lg font-bold text-white mb-4">Order Summary</h3>
+            <div class="space-y-2 text-gray-300">
+              <div id="summary-single" class="hidden flex justify-between">
+                <span><span id="summary-single-qty">0</span>x Single Sensor @ $150</span>
+                <span id="summary-single-total">$0</span>
+              </div>
+              <div id="summary-dual" class="hidden flex justify-between">
+                <span><span id="summary-dual-qty">0</span>x Dual Sensor @ $225</span>
+                <span id="summary-dual-total">$0</span>
+              </div>
+              <div class="border-t border-gray-700 pt-2 mt-2">
+                <div class="flex justify-between font-semibold">
+                  <span>Subtotal:</span>
+                  <span id="summary-subtotal">$0</span>
+                </div>
+              </div>
+              <div id="summary-discount-row" class="hidden flex justify-between text-green-400">
+                <span>Discount (<span id="summary-discount-percent">0</span>% off <span id="summary-device-count">0</span> devices):</span>
+                <span id="summary-discount">-$0</span>
+              </div>
+              <div class="border-t border-gray-700 pt-2 mt-2">
+                <div class="flex justify-between font-bold text-xl text-blue-400">
+                  <span>Total:</span>
+                  <span id="summary-total">$0</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Quantity -->
-        <div class="mb-8">
-          <label for="quantity" class="block text-white font-semibold mb-2">Quantity</label>
-          <input
-            type="number"
-            id="quantity"
-            name="quantity"
-            value="1"
-            min="1"
-            max="10"
-            class="w-32 bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-          <p class="text-gray-500 text-sm mt-2">Discounts apply for multiple units. Contact <a href="mailto:kevin@beaker.ca" class="text-blue-400 hover:text-blue-300">kevin@beaker.ca</a> for bulk pricing.</p>
-        </div>
+        <script>
+        function updateOrderTotal() {
+          const qtySingle = parseInt(document.getElementById('quantity_single').value) || 0;
+          const qtyDual = parseInt(document.getElementById('quantity_dual').value) || 0;
+          const totalDevices = qtySingle + qtyDual;
+
+          const priceSingle = 150;
+          const priceDual = 225;
+
+          const subtotal = (qtySingle * priceSingle) + (qtyDual * priceDual);
+
+          // Calculate discount
+          let discountPercent = 0;
+          if (totalDevices >= 3) {
+            discountPercent = 15;
+          } else if (totalDevices >= 2) {
+            discountPercent = 10;
+          }
+
+          const discountAmount = subtotal * (discountPercent / 100);
+          const total = subtotal - discountAmount;
+
+          // Update summary display
+          const summaryDiv = document.getElementById('order-summary');
+          const summarySingle = document.getElementById('summary-single');
+          const summaryDual = document.getElementById('summary-dual');
+          const discountRow = document.getElementById('summary-discount-row');
+
+          if (totalDevices > 0) {
+            summaryDiv.classList.remove('hidden');
+
+            if (qtySingle > 0) {
+              summarySingle.classList.remove('hidden');
+              document.getElementById('summary-single-qty').textContent = qtySingle;
+              document.getElementById('summary-single-total').textContent = '$' + (qtySingle * priceSingle).toFixed(2);
+            } else {
+              summarySingle.classList.add('hidden');
+            }
+
+            if (qtyDual > 0) {
+              summaryDual.classList.remove('hidden');
+              document.getElementById('summary-dual-qty').textContent = qtyDual;
+              document.getElementById('summary-dual-total').textContent = '$' + (qtyDual * priceDual).toFixed(2);
+            } else {
+              summaryDual.classList.add('hidden');
+            }
+
+            document.getElementById('summary-subtotal').textContent = '$' + subtotal.toFixed(2);
+
+            if (discountPercent > 0) {
+              discountRow.classList.remove('hidden');
+              document.getElementById('summary-discount-percent').textContent = discountPercent;
+              document.getElementById('summary-device-count').textContent = totalDevices;
+              document.getElementById('summary-discount').textContent = '-$' + discountAmount.toFixed(2);
+            } else {
+              discountRow.classList.add('hidden');
+            }
+
+            document.getElementById('summary-total').textContent = '$' + total.toFixed(2);
+          } else {
+            summaryDiv.classList.add('hidden');
+          }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', updateOrderTotal);
+        </script>
 
         <!-- Shipping Address -->
         <div class="mb-8">
