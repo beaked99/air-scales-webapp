@@ -85,7 +85,11 @@ final class OrderController extends AbstractController
 
         // Apply quantity discount
         $discountPercent = 0;
-        if ($totalDevices >= 3) {
+        if ($totalDevices >= 100) {
+            $discountPercent = 25;
+        } elseif ($totalDevices >= 50) {
+            $discountPercent = 20;
+        } elseif ($totalDevices >= 10) {
             $discountPercent = 15;
         } elseif ($totalDevices >= 2) {
             $discountPercent = 10;
