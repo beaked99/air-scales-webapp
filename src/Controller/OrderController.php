@@ -140,32 +140,27 @@ final class OrderController extends AbstractController
         $stripeSecretKey = $this->getParameter('stripe_secret_key');
         Stripe::setApiKey($stripeSecretKey);
 
-        // Build Stripe line items
+        // Build Stripe line items - use the discounted total price directly
         $stripeLineItems = [];
+
+        // Calculate per-item price after discount is applied proportionally
         foreach ($orderItems as $item) {
+            $itemSubtotal = $item['line_total'];
+            $itemDiscount = $discountAmount * ($itemSubtotal / $subtotal); // Proportional discount
+            $itemTotal = $itemSubtotal - $itemDiscount;
+            $pricePerUnit = $itemTotal / $item['quantity'];
+
             $stripeLineItems[] = [
                 'price_data' => [
                     'currency' => 'usd',
                     'product_data' => [
-                        'name' => $item['product_name'],
+                        'name' => $discountPercent > 0
+                            ? "{$item['product_name']} ({$discountPercent}% volume discount applied)"
+                            : $item['product_name'],
                     ],
-                    'unit_amount' => (int) ($item['unit_price'] * 100), // Stripe uses cents
+                    'unit_amount' => (int) round($pricePerUnit * 100), // Stripe uses cents
                 ],
                 'quantity' => $item['quantity'],
-            ];
-        }
-
-        // Add discount as a separate line item if applicable
-        if ($discountAmount > 0) {
-            $stripeLineItems[] = [
-                'price_data' => [
-                    'currency' => 'usd',
-                    'product_data' => [
-                        'name' => "Volume Discount ({$discountPercent}% off {$totalDevices} devices)",
-                    ],
-                    'unit_amount' => -(int) ($discountAmount * 100), // Negative amount for discount
-                ],
-                'quantity' => 1,
             ];
         }
 
@@ -183,6 +178,8 @@ final class OrderController extends AbstractController
                     'is_guest' => $user ? 'false' : 'true',
                     'total_devices' => $totalDevices,
                     'discount_percent' => $discountPercent,
+                    'subtotal' => number_format($subtotal, 2, '.', ''),
+                    'discount_amount' => number_format($discountAmount, 2, '.', ''),
                 ],
             ]);
 
