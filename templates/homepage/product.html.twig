@@ -93,11 +93,7 @@
             </div>
             <div class="flex items-start">
               <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-              <span class="text-gray-300">Ideal for single axle monitoring</span>
-            </div>
-            <div class="flex items-start">
-              <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-              <span class="text-gray-300">Full mobile app functionality</span>
+              <span class="text-gray-300">Ideal for single axle group monitoring</span>
             </div>
             <div class="flex items-start">
               <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
@@ -142,15 +138,11 @@
             </div>
             <div class="flex items-start">
               <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-              <span class="text-gray-300">Monitor front & rear axles simultaneously</span>
+              <span class="text-gray-300">Monitor up to 2 axle groups simultaneously</span>
             </div>
             <div class="flex items-start">
               <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-              <span class="text-gray-300">Independent weight readings per axle</span>
-            </div>
-            <div class="flex items-start">
-              <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-              <span class="text-gray-300">Full mobile app functionality</span>
+              <span class="text-gray-300">Independent weight readings per axle group</span>
             </div>
             <div class="flex items-start">
               <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
@@ -234,7 +226,7 @@
     <div class="container mx-auto px-6 text-center">
       <h2 class="text-4xl font-bold text-white mb-8">Subscription Plans</h2>
       <p class="text-xl text-gray-400 mb-12 max-w-3xl mx-auto">
-        AirScales requires an active subscription for cloud features, data storage, and mobile app access.
+        AirScales requires an active subscription for full mobile app access, including real-time weight access, cloud features and data storage.
       </p>
       <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         <div class="bg-gray-900 rounded-lg p-8 border border-gray-700">
@@ -252,10 +244,6 @@
             <li class="flex items-start">
               <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
               <span>Historical data & reports</span>
-            </li>
-            <li class="flex items-start">
-              <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-              <span>6 months free subscription (one user)</span>
             </li>
           </ul>
           {% if app.user %}
@@ -286,10 +274,6 @@
             </li>
             <li class="flex items-start">
               <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-              <span>Early access to new features</span>
-            </li>
-            <li class="flex items-start">
-              <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
               <span>2 months free (vs monthly)</span>
             </li>
           </ul>
@@ -304,11 +288,6 @@
           {% endif %}
         </div>
       </div>
-      <div class="bg-green-900/30 border border-green-500 rounded-lg p-4 max-w-2xl mx-auto mt-8">
-        <p class="text-green-400 font-semibold">
-          <i class="fas fa-gift mr-2"></i>New device purchase includes 6 months free subscription for 1 user!
-        </p>
-      </div>
     </div>
   </section>
 
@@ -319,9 +298,9 @@
       <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
         Contact us to discuss your specific needs and get a custom quote for your AirScales system.
       </p>
-      <button onclick="alert('Contact sales@beaker.ca for pricing and orders!')" class="bg-blue-600 hover:bg-blue-700 text-white px-12 py-4 rounded-lg text-xl font-semibold transition">
+      <a href="mailto:kevin@beaker.ca?subject=AirScales%20Order%20Inquiry" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-12 py-4 rounded-lg text-xl font-semibold transition">
         <i class="fas fa-envelope mr-2"></i>Contact Sales
-      </button>
+      </a>
     </div>
   </section>
 

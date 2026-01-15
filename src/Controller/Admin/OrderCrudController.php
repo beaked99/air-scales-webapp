@@ -74,12 +74,8 @@ class OrderCrudController extends AbstractCrudController
         } else {
             yield TextareaField::new('orderItemsDisplay', 'Items Ordered')
                 ->hideOnForm()
-                ->setTemplatePath('admin/field/text_readonly.html.twig');
+                ->setTemplatePath('admin/field/order_items_table.html.twig');
         }
-
-        yield IntegerField::new('quantity', 'Total Qty')
-            ->setHelp('Total number of devices')
-            ->hideOnIndex(); // Hide from list, show in detail view only
 
         yield MoneyField::new('subtotal', 'Subtotal')
             ->setCurrency('USD')
