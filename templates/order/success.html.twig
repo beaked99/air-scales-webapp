@@ -23,15 +23,51 @@
           <span class="text-white font-semibold">#{{ order.id }}</span>
         </div>
 
-        <div class="flex justify-between border-b border-gray-700 pb-3">
-          <span class="text-gray-400">Product</span>
-          <span class="text-white">{{ order.product.name }}</span>
-        </div>
+        {% if order.orderItems %}
+          <div class="border-b border-gray-700 pb-3">
+            <div class="text-gray-400 mb-2">Items Ordered</div>
+            {% for item in order.orderItems %}
+              <div class="flex justify-between text-white ml-4">
+                <span>{{ item.quantity }}x {{ item.product_name }}</span>
+                <span>${{ item.line_total }}</span>
+              </div>
+            {% endfor %}
+          </div>
 
-        <div class="flex justify-between border-b border-gray-700 pb-3">
-          <span class="text-gray-400">Quantity</span>
-          <span class="text-white">{{ order.quantity }}</span>
-        </div>
+          {% if order.subtotal %}
+            <div class="flex justify-between border-b border-gray-700 pb-3">
+              <span class="text-gray-400">Subtotal</span>
+              <span class="text-white">${{ order.subtotal }}</span>
+            </div>
+          {% endif %}
+
+          {% if order.discountAmount and order.discountAmount > 0 %}
+            <div class="flex justify-between border-b border-gray-700 pb-3">
+              <span class="text-gray-400">Discount</span>
+              <span class="text-green-400">-${{ order.discountAmount }}</span>
+            </div>
+          {% endif %}
+
+          <div class="flex justify-between border-b border-gray-700 pb-3">
+            <span class="text-gray-400 font-semibold">Total</span>
+            <span class="text-white font-bold text-xl">${{ order.totalPaid }}</span>
+          </div>
+        {% else %}
+          <div class="flex justify-between border-b border-gray-700 pb-3">
+            <span class="text-gray-400">Product</span>
+            <span class="text-white">{{ order.product ? order.product.name : 'N/A' }}</span>
+          </div>
+
+          <div class="flex justify-between border-b border-gray-700 pb-3">
+            <span class="text-gray-400">Quantity</span>
+            <span class="text-white">{{ order.quantity }}</span>
+          </div>
+
+          <div class="flex justify-between border-b border-gray-700 pb-3">
+            <span class="text-gray-400">Total</span>
+            <span class="text-white font-bold">${{ order.totalPaid }}</span>
+          </div>
+        {% endif %}
 
         <div class="flex justify-between border-b border-gray-700 pb-3">
           <span class="text-gray-400">Status</span>
