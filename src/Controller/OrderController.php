@@ -32,19 +32,24 @@ final class OrderController extends AbstractController
     #[Route('/order/checkout', name: 'order_checkout', methods: ['POST'])]
     public function checkout(Request $request): Response
     {
-        // This user must be logged in to order
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
         $user = $this->getUser();
 
         // Get form data
         $deviceType = $request->request->get('device_type'); // 'single' or 'dual'
         $quantity = (int) $request->request->get('quantity', 1);
+        $guestEmail = $request->request->get('email');
+        $guestName = $request->request->get('name');
         $shippingAddress = $request->request->get('shipping_address');
         $shippingCity = $request->request->get('shipping_city');
         $shippingState = $request->request->get('shipping_state');
         $shippingZip = $request->request->get('shipping_zip');
         $shippingCountry = $request->request->get('shipping_country', 'US');
+
+        // If not logged in, require guest email and name
+        if (!$user && (empty($guestEmail) || empty($guestName))) {
+            $this->addFlash('error', 'Please provide your email and name.');
+            return $this->redirectToRoute('order_create', ['type' => $deviceType]);
+        }
 
         // Combine shipping address
         $fullShippingAddress = sprintf(
@@ -67,7 +72,12 @@ final class OrderController extends AbstractController
 
         // Create order in database
         $order = new Order();
-        $order->setUser($user);
+        if ($user) {
+            $order->setUser($user);
+        } else {
+            $order->setGuestEmail($guestEmail);
+            $order->setGuestName($guestName);
+        }
         $order->setProduct($product);
         $order->setQuantity($quantity);
         $order->setTotalPaid('0.00'); // Will be updated after payment
@@ -103,9 +113,10 @@ final class OrderController extends AbstractController
                 'mode' => 'payment',
                 'success_url' => $this->generateUrl('order_success', ['order_id' => $order->getId()], 0),
                 'cancel_url' => $this->generateUrl('order_cancel', ['order_id' => $order->getId()], 0),
-                'customer_email' => $user->getEmail(),
+                'customer_email' => $user ? $user->getEmail() : $guestEmail,
                 'metadata' => [
                     'order_id' => $order->getId(),
+                    'is_guest' => $user ? 'false' : 'true',
                 ],
             ]);
 
@@ -125,17 +136,23 @@ final class OrderController extends AbstractController
     #[Route('/order/success/{order_id}', name: 'order_success')]
     public function success(int $order_id): Response
     {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
         $order = $this->em->getRepository(Order::class)->find($order_id);
 
-        if (!$order || $order->getUser() !== $this->getUser()) {
+        if (!$order) {
+            throw $this->createNotFoundException('Order not found');
+        }
+
+        // Verify ownership (either logged in user owns it, or it's their guest order)
+        $user = $this->getUser();
+        if ($user && $order->getUser() !== $user) {
             throw $this->createNotFoundException('Order not found');
         }
 
         // Update order status to processing
-        $order->setStatus('processing');
-        $this->em->flush();
+        if ($order->getStatus() === 'pending') {
+            $order->setStatus('processing');
+            $this->em->flush();
+        }
 
         return $this->render('order/success.html.twig', [
             'order' => $order,
@@ -145,17 +162,23 @@ final class OrderController extends AbstractController
     #[Route('/order/cancel/{order_id}', name: 'order_cancel')]
     public function cancel(int $order_id): Response
     {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
         $order = $this->em->getRepository(Order::class)->find($order_id);
 
-        if (!$order || $order->getUser() !== $this->getUser()) {
+        if (!$order) {
+            throw $this->createNotFoundException('Order not found');
+        }
+
+        // Verify ownership
+        $user = $this->getUser();
+        if ($user && $order->getUser() !== $user) {
             throw $this->createNotFoundException('Order not found');
         }
 
         // Mark order as canceled
-        $order->setStatus('canceled');
-        $this->em->flush();
+        if ($order->getStatus() === 'pending') {
+            $order->setStatus('canceled');
+            $this->em->flush();
+        }
 
         return $this->render('order/cancel.html.twig', [
             'order' => $order,

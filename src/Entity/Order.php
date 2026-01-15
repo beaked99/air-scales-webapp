@@ -14,8 +14,14 @@ class Order
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    private User $user;
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $user = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $guestEmail = null;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $guestName = null;
 
     #[ORM\ManyToOne(targetEntity: Product::class)]
     #[ORM\JoinColumn(nullable: false)]
@@ -71,15 +77,47 @@ class Order
         return $this->id;
     }
 
-    public function getUser(): User
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(User $user): static
+    public function setUser(?User $user): static
     {
         $this->user = $user;
         return $this;
+    }
+
+    public function getGuestEmail(): ?string
+    {
+        return $this->guestEmail;
+    }
+
+    public function setGuestEmail(?string $guestEmail): static
+    {
+        $this->guestEmail = $guestEmail;
+        return $this;
+    }
+
+    public function getGuestName(): ?string
+    {
+        return $this->guestName;
+    }
+
+    public function setGuestName(?string $guestName): static
+    {
+        $this->guestName = $guestName;
+        return $this;
+    }
+
+    public function getCustomerEmail(): string
+    {
+        return $this->user ? $this->user->getEmail() : ($this->guestEmail ?? '');
+    }
+
+    public function getCustomerName(): string
+    {
+        return $this->user ? ($this->user->getFirstName() . ' ' . $this->user->getLastName()) : ($this->guestName ?? '');
     }
 
     public function getProduct(): Product

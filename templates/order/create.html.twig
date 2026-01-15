@@ -10,21 +10,35 @@
     <h1 class="text-4xl font-bold text-white mb-4">Pre-Order Your AirScales</h1>
     <p class="text-gray-400 mb-8">Complete your order and we will ship your device within 3-5 months.</p>
 
-    {% if not app.user %}
-      <div class="bg-yellow-900/30 border border-yellow-500 rounded-lg p-6 mb-8">
-        <p class="text-yellow-400 font-semibold mb-3">
-          <i class="fas fa-exclamation-triangle mr-2"></i>You need to sign in to place an order
+    {% if app.user %}
+      <div class="bg-blue-900/30 border border-blue-500 rounded-lg p-4 mb-8">
+        <p class="text-blue-400">
+          <i class="fas fa-info-circle mr-2"></i>Signed in as <strong>{{ app.user.email }}</strong>
         </p>
-        <a href="{{ path('app_login') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition">
-          <i class="fas fa-sign-in-alt mr-2"></i>Sign In
-        </a>
-        <span class="text-gray-400 mx-3">or</span>
-        <a href="{{ path('app_register') }}" class="inline-block bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition">
-          <i class="fas fa-user-plus mr-2"></i>Create Account
-        </a>
       </div>
-    {% else %}
-      <form method="POST" action="{{ path('order_checkout') }}" class="bg-gray-800 rounded-lg border border-gray-700 p-8">
+    {% endif %}
+
+    <form method="POST" action="{{ path('order_checkout') }}" class="bg-gray-800 rounded-lg border border-gray-700 p-8">
+      {% if not app.user %}
+        <!-- Guest Information -->
+        <div class="mb-8">
+          <h2 class="text-2xl font-bold text-white mb-4">Your Information</h2>
+          <p class="text-gray-400 mb-6 text-sm">
+            Already have an account? <a href="{{ path('app_login') }}" class="text-blue-400 hover:text-blue-300">Sign in</a>
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-semibold text-gray-300 mb-2">Name</label>
+              <input type="text" name="name" required class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="John Smith">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-300 mb-2">Email</label>
+              <input type="email" name="email" required class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="you@example.com">
+            </div>
+          </div>
+        </div>
+      {% endif %}
         <!-- Device Configuration -->
         <div class="mb-8">
           <h2 class="text-2xl font-bold text-white mb-6">Device Configuration</h2>
@@ -166,7 +180,6 @@
           </button>
         </div>
       </form>
-    {% endif %}
     </section>
     {% include '_footer.html.twig' %}
   </div>
