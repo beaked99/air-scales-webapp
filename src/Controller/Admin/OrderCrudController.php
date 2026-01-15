@@ -12,7 +12,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
@@ -70,7 +69,7 @@ class OrderCrudController extends AbstractCrudController
             ->onlyOnDetail();
 
         // Order Items - display line items from JSON
-        yield ArrayField::new('orderItems', 'Items')
+        yield TextField::new('orderItems', 'Items')
             ->formatValue(function ($value, Order $entity) {
                 if (!$entity->getOrderItems()) {
                     // Fallback for old single-product orders
