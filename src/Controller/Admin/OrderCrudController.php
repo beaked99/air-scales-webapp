@@ -68,8 +68,8 @@ class OrderCrudController extends AbstractCrudController
         yield AssociationField::new('user', 'Registered User')
             ->onlyOnDetail();
 
-        // Order Items - display line items from JSON
-        yield TextField::new('orderItems', 'Items')
+        // Order Items - display line items from JSON (virtual field to avoid conversion issues)
+        yield TextField::new('itemsSummary', 'Items')
             ->formatValue(function ($value, Order $entity) {
                 if (!$entity->getOrderItems()) {
                     // Fallback for old single-product orders
@@ -88,6 +88,7 @@ class OrderCrudController extends AbstractCrudController
                 }
                 return implode(' | ', $items);
             })
+            ->setVirtual(true)
             ->hideOnForm();
 
         yield IntegerField::new('quantity', 'Total Qty')
