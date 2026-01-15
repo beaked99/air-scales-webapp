@@ -68,26 +68,42 @@ class OrderCrudController extends AbstractCrudController
         yield AssociationField::new('user', 'Registered User')
             ->onlyOnDetail();
 
-        // Order Items - display line items from JSON (virtual field to avoid conversion issues)
-        yield TextField::new('itemsSummary', 'Items')
-            ->formatValue(function ($value, Order $entity) {
-                if (!$entity->getOrderItems()) {
-                    // Fallback for old single-product orders
-                    return $entity->getProduct() ? $entity->getProduct()->getName() : 'N/A';
-                }
+        // Order Items - display line items from JSON
+        if ($pageName === Crud::PAGE_INDEX) {
+            yield TextField::new('itemsSummary', 'Items')
+                ->formatValue(function ($value, Order $entity) {
+                    if (!$entity->getOrderItems()) {
+                        return $entity->getProduct() ? $entity->getProduct()->getName() : 'N/A';
+                    }
 
-                $items = [];
-                foreach ($entity->getOrderItems() as $item) {
-                    $items[] = sprintf(
-                        '%dx %s',
-                        $item['quantity'],
-                        $item['product_name']
-                    );
-                }
-                return implode(', ', $items);
-            })
-            ->setVirtual(true)
-            ->hideOnForm();
+                    $items = [];
+                    foreach ($entity->getOrderItems() as $item) {
+                        $items[] = sprintf('%dx %s', $item['quantity'], $item['product_name']);
+                    }
+                    return implode(', ', $items);
+                });
+        } else {
+            yield TextareaField::new('orderItemsDisplay', 'Items Ordered')
+                ->formatValue(function ($value, Order $entity) {
+                    if (!$entity->getOrderItems()) {
+                        return $entity->getProduct() ? $entity->getProduct()->getName() : 'N/A';
+                    }
+
+                    $lines = [];
+                    foreach ($entity->getOrderItems() as $item) {
+                        $lines[] = sprintf(
+                            '%dx %s @ $%s = $%s',
+                            $item['quantity'],
+                            $item['product_name'],
+                            number_format($item['unit_price'], 2),
+                            number_format($item['line_total'], 2)
+                        );
+                    }
+                    return implode("\n", $lines);
+                })
+                ->hideOnForm()
+                ->setTemplatePath('admin/field/text_readonly.html.twig');
+        }
 
         yield IntegerField::new('quantity', 'Total Qty')
             ->setHelp('Total number of devices')
