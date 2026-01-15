@@ -79,20 +79,19 @@ class OrderCrudController extends AbstractCrudController
                 $items = [];
                 foreach ($entity->getOrderItems() as $item) {
                     $items[] = sprintf(
-                        '%dx %s @ $%s = $%s',
+                        '%dx %s',
                         $item['quantity'],
-                        $item['product_name'],
-                        number_format($item['unit_price'], 2),
-                        number_format($item['line_total'], 2)
+                        $item['product_name']
                     );
                 }
-                return implode(' | ', $items);
+                return implode(', ', $items);
             })
             ->setVirtual(true)
             ->hideOnForm();
 
         yield IntegerField::new('quantity', 'Total Qty')
-            ->setHelp('Total number of devices');
+            ->setHelp('Total number of devices')
+            ->hideOnIndex(); // Hide from list, show in detail view only
 
         yield MoneyField::new('subtotal', 'Subtotal')
             ->setCurrency('USD')
