@@ -71,6 +71,11 @@ class Device
     #[ORM\OneToMany(mappedBy: 'device', targetEntity: MicroData::class, orphanRemoval: true)]
     private Collection $microData;
 
+    #[ORM\OneToMany(mappedBy: 'device', targetEntity: DeviceChannel::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
+    private Collection $deviceChannels;
+
+    // DEPRECATED: Old single-channel regression coefficients - keep for backward compatibility
+    // Use DeviceChannel entities instead for per-channel calibration
     #[ORM\Column(type: 'float', nullable: true)]
     private ?float $regressionIntercept = null;
 
@@ -116,6 +121,7 @@ class Device
         $this->calibrations = new ArrayCollection();
         $this->microData = new ArrayCollection();
         $this->deviceAccesses = new ArrayCollection();
+        $this->deviceChannels = new ArrayCollection();
     }
 
     // Basic getters/setters
@@ -155,6 +161,7 @@ class Device
     public function getCalibrations(): Collection { return $this->calibrations; }
     public function getMicroData(): Collection { return $this->microData; }
     public function getDeviceAccesses(): Collection { return $this->deviceAccesses; }
+    public function getDeviceChannels(): Collection { return $this->deviceChannels; }
 
     public function addCalibration(Calibration $calibration): static
     {
@@ -194,7 +201,39 @@ class Device
         return $this;
     }
 
-    // Regression coefficients
+    public function addDeviceChannel(DeviceChannel $deviceChannel): self
+    {
+        if (!$this->deviceChannels->contains($deviceChannel)) {
+            $this->deviceChannels->add($deviceChannel);
+            $deviceChannel->setDevice($this);
+        }
+        return $this;
+    }
+
+    public function removeDeviceChannel(DeviceChannel $deviceChannel): self
+    {
+        if ($this->deviceChannels->removeElement($deviceChannel)) {
+            if ($deviceChannel->getDevice() === $this) {
+                $deviceChannel->setDevice(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Get a specific channel by index (1 or 2)
+     */
+    public function getChannel(int $channelIndex): ?DeviceChannel
+    {
+        foreach ($this->deviceChannels as $channel) {
+            if ($channel->getChannelIndex() === $channelIndex) {
+                return $channel;
+            }
+        }
+        return null;
+    }
+
+    // Regression coefficients (DEPRECATED - use DeviceChannel instead)
     public function getRegressionIntercept(): ?float { return $this->regressionIntercept; }
     public function setRegressionIntercept(?float $regressionIntercept): self { $this->regressionIntercept = $regressionIntercept; return $this; }
     public function getRegressionAirPressureCoeff(): ?float { return $this->regressionAirPressureCoeff; }
