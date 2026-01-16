@@ -34,6 +34,9 @@ class TruckConfiguration
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $lastUsed = null;
 
+    #[ORM\Column(type: 'boolean')]
+    private bool $isActive = false;
+
     public function __construct()
     {
         $this->deviceRoles = new ArrayCollection();
@@ -50,6 +53,58 @@ class TruckConfiguration
     public function setLayout(?array $layout): self { $this->layout = $layout; return $this; }
     public function getLastUsed(): ?\DateTimeInterface { return $this->lastUsed; }
     public function setLastUsed(?\DateTimeInterface $lastUsed): self { $this->lastUsed = $lastUsed; return $this; }
+    public function isActive(): bool { return $this->isActive; }
+    public function setIsActive(bool $isActive): self { $this->isActive = $isActive; return $this; }
+
+    /**
+     * Get all axle groups from all device roles in this configuration
+     */
+    public function getAxleGroups(): array
+    {
+        $axleGroups = [];
+        foreach ($this->deviceRoles as $deviceRole) {
+            $device = $deviceRole->getDevice();
+            if ($device) {
+                foreach ($device->getDeviceChannels() as $channel) {
+                    $axleGroup = $channel->getAxleGroup();
+                    if ($axleGroup && !in_array($axleGroup, $axleGroups, true)) {
+                        $axleGroups[] = $axleGroup;
+                    }
+                }
+            }
+        }
+        return $axleGroups;
+    }
+
+    /**
+     * Get total weight from all devices in this configuration
+     */
+    public function getTotalWeight(): float
+    {
+        $total = 0.0;
+        foreach ($this->deviceRoles as $deviceRole) {
+            $device = $deviceRole->getDevice();
+            if ($device) {
+                foreach ($device->getDeviceChannels() as $channel) {
+                    // This would need live data - placeholder for now
+                    $total += 0; // TODO: Get latest weight from channel
+                }
+            }
+        }
+        return $total;
+    }
+
+    /**
+     * Check if any axle group in this configuration needs calibration
+     */
+    public function needsCalibration(): bool
+    {
+        foreach ($this->getAxleGroups() as $axleGroup) {
+            // Check via DeviceChannel calibration status
+            // Simplified check - would need proper implementation
+        }
+        return false; // TODO: Implement proper check
+    }
 
     public function addDeviceRole(DeviceRole $deviceRole): self
     {

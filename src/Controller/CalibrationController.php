@@ -171,6 +171,23 @@ class CalibrationController extends AbstractController
             $calibrationsByChannel[$channelId]['calibrations'][] = $cal;
         }
 
+        // ALWAYS show all enabled channels (even if no calibrations yet) so the sections exist for linking
+        foreach ($device->getDeviceChannels() as $channel) {
+            if ($channel->isEnabled() && !isset($calibrationsByChannel[$channel->getId()])) {
+                $calibrationsByChannel[$channel->getId()] = [
+                    'channel' => $channel,
+                    'calibrations' => []
+                ];
+            }
+        }
+
+        // Sort by channel index
+        uasort($calibrationsByChannel, function($a, $b) {
+            $aIndex = $a['channel'] ? $a['channel']->getChannelIndex() : 999;
+            $bIndex = $b['channel'] ? $b['channel']->getChannelIndex() : 999;
+            return $aIndex <=> $bIndex;
+        });
+
         // Get regression coefficients per channel
         $channelCoeffs = [];
         foreach ($device->getDeviceChannels() as $channel) {

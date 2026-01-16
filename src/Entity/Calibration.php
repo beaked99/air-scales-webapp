@@ -35,6 +35,10 @@ class Calibration
     #[ORM\JoinColumn(nullable: true)]
     private ?User $updated_by = null;
 
+    #[ORM\ManyToOne(targetEntity: CalibrationSession::class, inversedBy: 'calibrations')]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?CalibrationSession $calibrationSession = null;
+
     // === Readings from device ===
 
     #[ORM\Column(type: 'float')]
@@ -171,6 +175,17 @@ class Calibration
     public function setComment(?string $comment): self
     {
         $this->comment = $comment;
+        return $this;
+    }
+
+    public function getCalibrationSession(): ?CalibrationSession
+    {
+        return $this->calibrationSession;
+    }
+
+    public function setCalibrationSession(?CalibrationSession $calibrationSession): self
+    {
+        $this->calibrationSession = $calibrationSession;
         return $this;
     }
 
