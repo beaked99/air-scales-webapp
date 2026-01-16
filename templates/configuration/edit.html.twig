@@ -77,11 +77,33 @@
         </div>
       {% endif %}
 
-      <div class="mt-4">
-        <p class="text-sm text-gray-400 mb-3">Add devices to this configuration:</p>
-        <div class="text-sm text-yellow-400">
-          Note: Device assignment is coming soon. For now, devices are automatically grouped when they share the same vehicle.
-        </div>
+      <!-- Add Device Form -->
+      <div class="mt-4 pt-4 border-t border-gray-700">
+        <h3 class="text-md font-semibold mb-3">Add Device</h3>
+        {% if devices|length > 0 %}
+          <div class="flex gap-2">
+            <select id="device-select" class="flex-1 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:border-sky-400">
+              <option value="">Select a device...</option>
+              {% for device in devices %}
+                <option value="{{ device.id }}">{{ device.serialNumber ?: 'AS25-' ~ device.id }}</option>
+              {% endfor %}
+            </select>
+            <select id="role-select" class="px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:border-sky-400">
+              <option value="tractor">Tractor</option>
+              <option value="trailer">Trailer</option>
+              <option value="steer">Steer</option>
+              <option value="drive">Drive</option>
+              <option value="tandem">Tandem</option>
+            </select>
+            <button onclick="addDevice()" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg">
+              Add
+            </button>
+          </div>
+        {% else %}
+          <div class="text-sm text-gray-400">
+            No devices available. Make sure you have devices registered.
+          </div>
+        {% endif %}
       </div>
     </section>
 
@@ -123,8 +145,56 @@ function deleteConfiguration(configId) {
   }
 }
 
+function addDevice() {
+  const deviceId = document.getElementById('device-select').value;
+  const role = document.getElementById('role-select').value;
+
+  if (!deviceId) {
+    alert('Please select a device');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('device_id', deviceId);
+  formData.append('role', role);
+
+  fetch(`/configuration/{{ configuration.id }}/add-device`, {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      window.location.reload();
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    alert('Failed to add device');
+    console.error(err);
+  });
+}
+
 function removeDevice(deviceRoleId) {
-  alert('Device removal is coming soon. For now, you can manage device assignments through the device page.');
+  if (confirm('Remove this device from the configuration?')) {
+    fetch(`/configuration/{{ configuration.id }}/remove-device/${deviceRoleId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      alert('Failed to remove device');
+      console.error(err);
+    });
+  }
 }
 </script>
 {% endblock %}

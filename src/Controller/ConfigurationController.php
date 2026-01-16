@@ -178,6 +178,70 @@ class ConfigurationController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/add-device', name: 'configuration_add_device', methods: ['POST'])]
+    public function addDevice(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        $configuration = $em->getRepository(TruckConfiguration::class)->find($id);
+
+        if (!$configuration || $configuration->getOwner() !== $user) {
+            return new JsonResponse(['error' => 'Configuration not found'], 404);
+        }
+
+        $deviceId = $request->request->get('device_id');
+        $role = $request->request->get('role', 'device');
+
+        $device = $em->getRepository(Device::class)->find($deviceId);
+        if (!$device) {
+            return new JsonResponse(['error' => 'Device not found'], 404);
+        }
+
+        // Check if device already in this configuration
+        foreach ($configuration->getDeviceRoles() as $existingRole) {
+            if ($existingRole->getDevice() === $device) {
+                return new JsonResponse(['error' => 'Device already in configuration'], 400);
+            }
+        }
+
+        $deviceRole = new DeviceRole();
+        $deviceRole->setDevice($device);
+        $deviceRole->setTruckConfiguration($configuration);
+        $deviceRole->setRole($role);
+        $deviceRole->setSortOrder($configuration->getDeviceRoles()->count());
+
+        $em->persist($deviceRole);
+        $em->flush();
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => 'Device added to configuration',
+        ]);
+    }
+
+    #[Route('/{configId}/remove-device/{deviceRoleId}', name: 'configuration_remove_device', methods: ['POST'])]
+    public function removeDevice(int $configId, int $deviceRoleId, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        $configuration = $em->getRepository(TruckConfiguration::class)->find($configId);
+
+        if (!$configuration || $configuration->getOwner() !== $user) {
+            return new JsonResponse(['error' => 'Configuration not found'], 404);
+        }
+
+        $deviceRole = $em->getRepository(DeviceRole::class)->find($deviceRoleId);
+        if (!$deviceRole || $deviceRole->getTruckConfiguration() !== $configuration) {
+            return new JsonResponse(['error' => 'Device role not found'], 404);
+        }
+
+        $em->remove($deviceRole);
+        $em->flush();
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => 'Device removed from configuration',
+        ]);
+    }
+
     #[Route('/{id}/bulk-calibration', name: 'configuration_bulk_calibration')]
     public function bulkCalibration(int $id, Request $request, EntityManagerInterface $em): Response
     {
