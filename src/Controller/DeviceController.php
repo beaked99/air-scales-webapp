@@ -318,7 +318,7 @@ class DeviceController extends AbstractController
             return $accessRecord->getDevice();
         }
 
-        // Try purchased devices
+        // Try purchased/claimed devices (soldTo)
         $device = $em->getRepository(Device::class)
             ->createQueryBuilder('d')
             ->where('d.soldTo = :user')
@@ -328,38 +328,7 @@ class DeviceController extends AbstractController
             ->getQuery()
             ->getOneOrNullResult();
 
-        if ($device) {
-            return $device;
-        }
-
-        // Check if user has access through vehicle ownership or connection
-        $device = $em->getRepository(Device::class)->find($deviceId);
-        if (!$device) {
-            return null;
-        }
-
-        $vehicle = $device->getVehicle();
-        if (!$vehicle) {
-            return null;
-        }
-
-        // Check if user owns the vehicle
-        if ($vehicle->getCreatedBy() === $user) {
-            return $device;
-        }
-
-        // Check if user is connected to the vehicle
-        $connection = $em->getRepository(\App\Entity\UserConnectedVehicle::class)->findOneBy([
-            'user' => $user,
-            'vehicle' => $vehicle,
-            'isConnected' => true
-        ]);
-
-        if ($connection) {
-            return $device;
-        }
-
-        return null;
+        return $device;
     }
 
     private function addDeviceStatusData(EntityManagerInterface $em, Device $device): void
