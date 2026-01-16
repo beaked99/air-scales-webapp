@@ -1,0 +1,137 @@
+{# templates/configuration/index.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Fleet Dashboard{% endblock %}
+
+{% block body %}
+<div class="min-h-screen text-white bg-gray-900">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 px-4 py-3 bg-gray-800 border-b border-gray-700 shadow-md">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-semibold text-white">Fleet Dashboard</h1>
+      <a href="{{ path('configuration_new') }}" class="px-4 py-2 text-sm font-medium bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors">
+        + New Configuration
+      </a>
+    </div>
+  </header>
+
+  <main class="pb-20">
+
+    <!-- Flash Messages -->
+    {% for type, messages in app.flashes %}
+      {% for message in messages %}
+        <div class="mx-4 mt-4 p-3 rounded-lg border-l-4 {% if type == 'success' %}bg-green-900/50 border-green-500 text-green-100{% elseif type == 'warning' %}bg-yellow-900/50 border-yellow-500 text-yellow-100{% else %}bg-red-900/50 border-red-500 text-red-100{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endfor %}
+
+    <!-- Attention Needed Section -->
+    {% if attentionNeeded|length > 0 %}
+    <section class="m-4 p-4 bg-red-900/30 border border-red-700 rounded-lg">
+      <h2 class="text-lg font-semibold text-red-400 mb-3">⚠️ Attention Needed</h2>
+      <div class="space-y-2">
+        {% for item in attentionNeeded %}
+          <div class="flex items-start justify-between p-3 bg-gray-800 rounded-lg">
+            <div class="flex-1">
+              <div class="text-sm text-white">{{ item.message }}</div>
+              <div class="text-xs text-gray-400 mt-1">{{ item.config.name }}</div>
+            </div>
+            {% if item.axleGroup is defined %}
+              <a href="{{ path('configuration_show', {id: item.config.id}) }}" class="ml-3 px-3 py-1 text-xs bg-sky-600 hover:bg-sky-700 rounded">
+                Calibrate
+              </a>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Active Configurations -->
+    {% set activeConfigs = configurations|filter(c => c.isActive) %}
+    {% if activeConfigs|length > 0 %}
+    <section class="m-4">
+      <h2 class="text-lg font-semibold mb-3">Active Configuration</h2>
+      {% for config in activeConfigs %}
+        {{ include('configuration/_config_card.html.twig', {config: config, isActive: true}) }}
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- All Configurations -->
+    <section class="m-4">
+      <h2 class="text-lg font-semibold mb-3">
+        {% if activeConfigs|length > 0 %}
+          Other Configurations
+        {% else %}
+          Your Configurations
+        {% endif %}
+      </h2>
+
+      {% if configurations|length == 0 %}
+        <div class="p-8 text-center bg-gray-800 border border-gray-700 rounded-lg">
+          <div class="text-gray-400 mb-4">No configurations yet</div>
+          <a href="{{ path('configuration_new') }}" class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-700 rounded-lg font-medium">
+            Create Your First Configuration
+          </a>
+        </div>
+      {% else %}
+        <div class="grid grid-cols-1 gap-4">
+          {% for config in configurations %}
+            {% if not config.isActive %}
+              {{ include('configuration/_config_card.html.twig', {config: config, isActive: false}) }}
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
+  </main>
+</div>
+
+<script>
+function activateConfiguration(configId) {
+  if (confirm('Activate this configuration?')) {
+    fetch(`/configuration/${configId}/activate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      alert('Failed to activate configuration');
+      console.error(err);
+    });
+  }
+}
+
+function deleteConfiguration(configId) {
+  if (confirm('Delete this configuration? This cannot be undone.')) {
+    fetch(`/configuration/${configId}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      alert('Failed to delete configuration');
+      console.error(err);
+    });
+  }
+}
+</script>
+{% endblock %}
