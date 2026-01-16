@@ -11,10 +11,13 @@
           <a href="{{ path('faq') }}" class="text-gray-300 hover:text-blue-400 transition">FAQ</a>
         </div>
       </div>
-      <div>
+      <div class="flex items-center gap-3">
         {% if app.user %}
-          <a href="{{ path('app_dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
-            <i class="fas fa-gauge mr-2"></i>Dashboard
+          <a href="{{ path('configuration_index') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+            <i class="fas fa-truck mr-2"></i>Fleet
+          </a>
+          <a href="{{ path('app_dashboard') }}" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+            <i class="fas fa-gauge mr-2"></i>Devices
           </a>
         {% else %}
           <a href="{{ path('app_login') }}" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">

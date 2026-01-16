@@ -142,5 +142,42 @@
     </form>
 
   </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800">
+    <div class="flex items-center justify-around py-3">
+      <!-- Devices -->
+      <a href="{{ path('app_dashboard') }}" class="flex flex-col items-center px-3 py-2 space-y-1 hover:opacity-80 transition">
+        <div class="flex items-center justify-center w-6 h-6 bg-gray-700 rounded-lg">
+          <i class="text-sm text-gray-400 fas fa-tachometer-alt"></i>
+        </div>
+        <span class="text-xs text-gray-400">Devices</span>
+      </a>
+
+      <!-- Fleet -->
+      <a href="{{ path('configuration_index') }}" class="flex flex-col items-center px-3 py-2 space-y-1 hover:opacity-80 transition">
+        <div class="flex items-center justify-center w-6 h-6 bg-gray-700 rounded-lg">
+          <i class="text-sm text-gray-400 fas fa-truck"></i>
+        </div>
+        <span class="text-xs text-gray-400">Fleet</span>
+      </a>
+
+      <!-- Calibrate (Current Page) -->
+      <button class="flex flex-col items-center px-3 py-2 space-y-1">
+        <div class="flex items-center justify-center w-6 h-6 rounded-lg bg-sky-400">
+          <i class="text-sm text-gray-900 fas fa-balance-scale"></i>
+        </div>
+        <span class="text-xs font-medium text-sky-400">Calibrate</span>
+      </button>
+
+      <!-- Profile -->
+      <a href="{{ path('user_profile') }}" class="flex flex-col items-center px-3 py-2 space-y-1 hover:opacity-80 transition">
+        <div class="flex items-center justify-center w-6 h-6 bg-gray-700 rounded-lg">
+          <i class="text-sm text-gray-400 fas fa-user"></i>
+        </div>
+        <span class="text-xs text-gray-400">Profile</span>
+      </a>
+    </div>
+  </nav>
 </div>
 {% endblock %}

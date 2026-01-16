@@ -13,6 +13,12 @@ final class HomepageController extends AbstractController
     #[Route('/', name: 'app_homepage')]
     public function index(): Response
     {
+        // Redirect logged-in users to their fleet dashboard
+        if ($this->getUser()) {
+            return $this->redirectToRoute('configuration_index');
+        }
+
+        // Show marketing homepage for non-authenticated users
         return $this->render('homepage/index.html.twig', [
             'controller_name' => 'HomepageController',
         ]);
