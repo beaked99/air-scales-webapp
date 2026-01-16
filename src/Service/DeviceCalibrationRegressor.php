@@ -3,15 +3,43 @@
 namespace App\Service;
 
 use App\Entity\Device;
+use App\Entity\DeviceChannel;
 use Doctrine\ORM\EntityManagerInterface;
 
 class DeviceCalibrationRegressor
 {
     public function __construct(private EntityManagerInterface $em) {}
 
+    /**
+     * Run regression for all channels on a device
+     */
     public function run(Device $device): bool
     {
-        $calibrations = $device->getCalibrations()->toArray();
+        $success = false;
+
+        // Run regression for each channel separately
+        foreach ($device->getDeviceChannels() as $channel) {
+            if ($this->runForChannel($channel)) {
+                $success = true;
+            }
+        }
+
+        return $success;
+    }
+
+    /**
+     * Run regression analysis for a specific channel
+     */
+    public function runForChannel(DeviceChannel $channel): bool
+    {
+        // Get all calibrations for this specific channel
+        $calibrations = $this->em->getRepository(\App\Entity\Calibration::class)
+            ->createQueryBuilder('c')
+            ->where('c.deviceChannel = :channel')
+            ->setParameter('channel', $channel)
+            ->getQuery()
+            ->getResult();
+
         $rows = $this->extractValidRows($calibrations);
 
         $n = count($rows);
@@ -20,10 +48,10 @@ class DeviceCalibrationRegressor
         }
 
         if ($n < 5) {
-            return $this->runSimpleDifferentialCalibration($device, $rows);
+            return $this->runSimpleDifferentialCalibration($channel, $rows);
         }
 
-        return $this->runDifferentialWithTemperature($device, $rows);
+        return $this->runDifferentialWithTemperature($channel, $rows);
     }
 
     /**
@@ -59,7 +87,7 @@ class DeviceCalibrationRegressor
      * < 5 points: Force through zero on gauge pressure.
      * W = m * Pg
      */
-    private function runSimpleDifferentialCalibration(Device $device, array $rows): bool
+    private function runSimpleDifferentialCalibration(DeviceChannel $channel, array $rows): bool
     {
         $scaleFactors = [];
 
@@ -74,16 +102,16 @@ class DeviceCalibrationRegressor
         $m = array_sum($scaleFactors) / count($scaleFactors);
 
         // Store as: W = 0 + m*Pbag + (-m)*Pamb + 0*T
-        $device->setRegressionIntercept(0.0);
-        $device->setRegressionAirPressureCoeff($m);
-        $device->setRegressionAmbientPressureCoeff(-$m);
-        $device->setRegressionAirTempCoeff(0.0);
+        $channel->setRegressionIntercept(0.0);
+        $channel->setRegressionAirPressureCoeff($m);
+        $channel->setRegressionAmbientPressureCoeff(-$m);
+        $channel->setRegressionAirTempCoeff(0.0);
 
         // These aren't truly "perfect"; set something honest.
-        $device->setRegressionRsq(null);
-        $device->setRegressionRmse(null);
+        $channel->setRegressionRsq(null);
+        $channel->setRegressionRmse(null);
 
-        $this->em->persist($device);
+        $this->em->persist($channel);
         $this->em->flush();
 
         return true;
@@ -98,7 +126,7 @@ class DeviceCalibrationRegressor
      *  - faded-in from N=5..20
      *  - clamped so max temp correction stays within gamma(N) of typical weight
      */
-    private function runDifferentialWithTemperature(Device $device, array $rows): bool
+    private function runDifferentialWithTemperature(DeviceChannel $channel, array $rows): bool
     {
         $n = count($rows);
 
@@ -160,7 +188,7 @@ class DeviceCalibrationRegressor
         $rsq = $this->rSquaredSafe($y, $pred);
         $rmse = $this->rmse($y, $pred);
 
-        // Store in your existing “bag/ambient/temp” form:
+        // Store in your existing "bag/ambient/temp" form:
         // W = b + m*Pbag + (-m)*Pamb + c*(T - T0)
         //
         // BUT you only store raw temp coeff; prediction code must also subtract T0.
@@ -168,14 +196,14 @@ class DeviceCalibrationRegressor
         // then bake T0 into intercept: b' = b - c*T0 and store temp as c.
         $bBaked = $b - $c*$t0;
 
-        $device->setRegressionIntercept($bBaked);
-        $device->setRegressionAirPressureCoeff($m);
-        $device->setRegressionAmbientPressureCoeff(-$m);
-        $device->setRegressionAirTempCoeff($c);
-        $device->setRegressionRsq($rsq);
-        $device->setRegressionRmse($rmse);
+        $channel->setRegressionIntercept($bBaked);
+        $channel->setRegressionAirPressureCoeff($m);
+        $channel->setRegressionAmbientPressureCoeff(-$m);
+        $channel->setRegressionAirTempCoeff($c);
+        $channel->setRegressionRsq($rsq);
+        $channel->setRegressionRmse($rmse);
 
-        $this->em->persist($device);
+        $this->em->persist($channel);
         $this->em->flush();
 
         return true;

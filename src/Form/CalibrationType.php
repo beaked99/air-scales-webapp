@@ -2,6 +2,8 @@
 namespace App\Form;
 
 use App\Entity\Calibration;
+use App\Entity\DeviceChannel;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -14,6 +16,23 @@ class CalibrationType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
+            ->add('deviceChannel', EntityType::class, [
+                'class' => DeviceChannel::class,
+                'choice_label' => 'displayLabel',
+                'placeholder' => 'Select Channel',
+                'required' => true,
+                'constraints' => [
+                    new Assert\NotBlank(['message' => 'Please select a channel']),
+                ],
+                'query_builder' => function($repository) use ($options) {
+                    $qb = $repository->createQueryBuilder('dc');
+                    if (isset($options['device'])) {
+                        $qb->where('dc.device = :device')
+                           ->setParameter('device', $options['device']);
+                    }
+                    return $qb->orderBy('dc.channelIndex', 'ASC');
+                }
+            ])
             ->add('scaleWeight', NumberType::class, [
                 'constraints' => [
                     new Assert\NotBlank(['message' => 'Please enter a weight']),
@@ -55,6 +74,7 @@ class CalibrationType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => Calibration::class,
+            'device' => null,
         ]);
     }
 }

@@ -69,7 +69,10 @@ class CalibrationController extends AbstractController
         $calibration->setDevice($device);
         // Set the user who created this calibration
         $calibration->setCreatedBy($user);
-        
+
+        // Default to Channel 1 if not specified
+        $calibration->setDeviceChannel($device->getChannel(1));
+
         // Pre-fill with latest sensor data if available
         if ($latestData) {
             $calibration->setAirPressure($latestData->getMainAirPressure());
@@ -77,8 +80,10 @@ class CalibrationController extends AbstractController
             $calibration->setAirTemperature($latestData->getTemperature());
             $calibration->setElevation($latestData->getElevation());
         }
-        
-        $form = $this->createForm(CalibrationType::class, $calibration);
+
+        $form = $this->createForm(CalibrationType::class, $calibration, [
+            'device' => $device
+        ]);
         $form->handleRequest($request);
         
         if ($form->isSubmitted() && $form->isValid()) {
@@ -363,7 +368,9 @@ class CalibrationController extends AbstractController
             throw $this->createNotFoundException('Calibration not found');
         }
 
-        $form = $this->createForm(CalibrationType::class, $calibration);
+        $form = $this->createForm(CalibrationType::class, $calibration, [
+            'device' => $device
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
