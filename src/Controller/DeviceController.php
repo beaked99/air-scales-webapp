@@ -45,39 +45,63 @@ class DeviceController extends AbstractController
     {
         $user = $this->getUser();
         $device = $this->getDeviceWithAccess($em, $id, $user);
-        
+
         if (!$device) {
             return new JsonResponse(['error' => 'Device not found'], 404);
         }
-        
-        // Get latest data
+
+        // Get latest data with channel data
         $latestData = $em->getRepository(MicroData::class)
             ->createQueryBuilder('m')
+            ->leftJoin('m.microDataChannels', 'mdc')
+            ->addSelect('mdc')
+            ->leftJoin('mdc.deviceChannel', 'dc')
+            ->addSelect('dc')
             ->where('m.device = :device')
             ->setParameter('device', $device)
             ->orderBy('m.id', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
-        
+
         if (!$latestData) {
             return new JsonResponse(['error' => 'No data available'], 404);
         }
-        
+
         $now = new \DateTime();
         $timestamp = $latestData->getTimestamp();
         $secondsDiff = $now->getTimestamp() - $timestamp->getTimestamp();
-        
+
+        // Build channel data array
+        $channels = [];
+        foreach ($latestData->getMicroDataChannels() as $microDataChannel) {
+            $channels[] = [
+                'channel_index' => $microDataChannel->getDeviceChannel()->getChannelIndex(),
+                'air_pressure' => $microDataChannel->getAirPressure(),
+                'weight' => $microDataChannel->getWeight(),
+            ];
+        }
+
         return new JsonResponse([
             'device_id' => $device->getId(),
+
+            // Multi-channel data (new format)
+            'channels' => $channels,
+
+            // Legacy single-channel data (backward compatibility)
             'weight' => $latestData->getWeight(),
             'main_air_pressure' => $latestData->getMainAirPressure(),
+
+            // Environmental data (shared)
             'atmospheric_pressure' => $latestData->getAtmosphericPressure(),
             'temperature' => $latestData->getTemperature(),
             'elevation' => $latestData->getElevation(),
             'gps_lat' => $latestData->getGpsLat(),
             'gps_lng' => $latestData->getGpsLng(),
+            'gps_accuracy_m' => $latestData->getGpsAccuracyM(),
             'signal_strength' => $device->getSignalStrength(),
+
+            // Timestamp and status
             'timestamp' => $timestamp->format('Y-m-d H:i:s'),
             'last_seen' => $this->formatTimeDifference($timestamp),
             'connection_status' => $this->getDeviceConnectionStatus($latestData),

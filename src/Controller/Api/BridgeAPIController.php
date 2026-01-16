@@ -5,9 +5,11 @@ namespace App\Controller\Api;
 use App\Entity\Device;
 use App\Entity\DeviceAccess;
 use App\Entity\MicroData;
+use App\Entity\MicroDataChannel;
 use App\Entity\User;
 use App\Entity\UserConnectedVehicle;
 use App\Entity\Vehicle;
+use App\Service\DeviceChannelService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,7 +22,12 @@ use Psr\Log\LoggerInterface;
 class BridgeAPIController extends AbstractController
 {
     #[Route('/register', name: 'register', methods: ['POST'])]
-    public function register(Request $request, EntityManagerInterface $em, LoggerInterface $logger): JsonResponse
+    public function register(
+        Request $request,
+        EntityManagerInterface $em,
+        LoggerInterface $logger,
+        DeviceChannelService $channelService
+    ): JsonResponse
     {
         try {
             $data = json_decode($request->getContent(), true);
@@ -53,14 +60,20 @@ class BridgeAPIController extends AbstractController
                 $device->setDeviceType($deviceType);
                 $device->setFirmwareVersion($firmwareVersion);
                 $device->setSerialNumber($data['serial_number'] ?? null);
-                
+
                 $em->persist($device);
                 $em->flush();
+
+                // Initialize default channels (Channel 1 and Channel 2)
+                $channelService->initializeDefaultChannels($device);
             } else {
                 if ($device->getFirmwareVersion() !== $firmwareVersion) {
                     $device->setFirmwareVersion($firmwareVersion);
                     $em->flush();
                 }
+
+                // Ensure existing devices have channels
+                $channelService->initializeDefaultChannels($device);
             }
             
             $response = [
@@ -68,13 +81,17 @@ class BridgeAPIController extends AbstractController
                 'mac_address' => $device->getMacAddress(),
                 'status' => 'registered'
             ];
-            
-            $hasCalibration = $device->getRegressionIntercept() !== null ||
-                             $device->getRegressionAirPressureCoeff() !== null ||
-                             $device->getRegressionAmbientPressureCoeff() !== null ||
-                             $device->getRegressionAirTempCoeff() !== null;
 
-            if ($hasCalibration) {
+            // Return calibration for all channels
+            $channelCalibrations = $channelService->getAllChannelCalibrations($device);
+            if (!empty($channelCalibrations)) {
+                $response['channel_calibrations'] = $channelCalibrations;
+            }
+
+            // DEPRECATED: Legacy single-channel calibration for backward compatibility
+            $hasOldCalibration = $device->getRegressionIntercept() !== null ||
+                                $device->getRegressionAirPressureCoeff() !== null;
+            if ($hasOldCalibration) {
                 $response['regression_coefficients'] = [
                     'intercept' => $device->getRegressionIntercept() ?? 0.0,
                     'air_pressure_coeff' => $device->getRegressionAirPressureCoeff() ?? 0.0,
@@ -84,7 +101,7 @@ class BridgeAPIController extends AbstractController
                     'rmse' => $device->getRegressionRmse() ?? 0.0
                 ];
             }
-            
+
             return new JsonResponse($response);
             
         } catch (\Exception $e) {
@@ -263,9 +280,10 @@ class BridgeAPIController extends AbstractController
     
     #[Route('/data', name: 'data', methods: ['POST'])]
     public function receiveDataViaPhone(
-        Request $request, 
+        Request $request,
         EntityManagerInterface $em,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        DeviceChannelService $channelService
     ): JsonResponse {
         try {
             $data = json_decode($request->getContent(), true);
@@ -299,6 +317,9 @@ class BridgeAPIController extends AbstractController
                 $device->setSerialNumber($data['serial_number'] ?? null);
                 $em->persist($device);
                 $em->flush();
+
+                // Initialize channels for new device
+                $channelService->initializeDefaultChannels($device);
             } else {
                 // Update MAC address if it's NULL
                 if (!$device->getMacAddress()) {
@@ -310,6 +331,9 @@ class BridgeAPIController extends AbstractController
                         'mac_address' => $macAddress
                     ]);
                 }
+
+                // Ensure device has channels
+                $channelService->initializeDefaultChannels($device);
             }
             
             // Handle batch data from phone (multiple readings) or single reading
@@ -322,17 +346,21 @@ class BridgeAPIController extends AbstractController
                     $logger->warning('Invalid data point in batch', ['point' => $point]);
                     continue;
                 }
-                
+
                 $microData = new MicroData();
                 $microData->setDevice($device);
                 $microData->setMacAddress($macAddress);
-                $microData->setMainAirPressure($point['main_air_pressure'] ?? 0.0);
-                $microData->setAtmosphericPressure($point['atmospheric_pressure'] ?? 0.0);
-                $microData->setTemperature($point['temperature'] ?? 0.0);
-                $microData->setElevation($point['elevation'] ?? 0.0);
-                $microData->setGpsLat($point['gps_lat'] ?? 0.0);
-                $microData->setGpsLng($point['gps_lng'] ?? 0.0);
-                
+
+                // Environmental data (shared across all channels)
+                $microData->setAtmosphericPressure($point['atmospheric_pressure'] ?? null);
+                $microData->setTemperature($point['temperature'] ?? null);
+                $microData->setElevation($point['elevation'] ?? null);
+
+                // GPS from phone (optional enrichment)
+                $microData->setGpsLat($point['gps_lat'] ?? null);
+                $microData->setGpsLng($point['gps_lng'] ?? null);
+                $microData->setGpsAccuracyM($point['gps_accuracy_m'] ?? null);
+
                 $timestamp = $point['timestamp'] ?? 'now';
                 try {
                     if (is_numeric($timestamp) && $timestamp < 1000000000) {
@@ -344,10 +372,41 @@ class BridgeAPIController extends AbstractController
                     $logger->warning('Invalid timestamp, using server time', ['timestamp' => $timestamp]);
                     $microData->setTimestamp(new \DateTimeImmutable());
                 }
-                
-                $lastWeight = $this->calculateWeight($device, $microData, $point['weight'] ?? null);
-                $microData->setWeight($lastWeight);
-                
+
+                // Handle channel data (new format) or legacy single-channel data
+                if (isset($point['channels']) && is_array($point['channels'])) {
+                    // New multi-channel format
+                    foreach ($point['channels'] as $channelData) {
+                        $channelIndex = $channelData['channel_index'] ?? null;
+                        if ($channelIndex === null) {
+                            continue;
+                        }
+
+                        $deviceChannel = $device->getChannel($channelIndex);
+                        if (!$deviceChannel) {
+                            $logger->warning('Channel not found for device', [
+                                'device_id' => $device->getId(),
+                                'channel_index' => $channelIndex
+                            ]);
+                            continue;
+                        }
+
+                        $microDataChannel = new MicroDataChannel();
+                        $microDataChannel->setMicroData($microData);
+                        $microDataChannel->setDeviceChannel($deviceChannel);
+                        $microDataChannel->setAirPressure($channelData['air_pressure'] ?? null);
+                        $microDataChannel->setWeight($channelData['weight'] ?? null);
+
+                        $microData->addMicroDataChannel($microDataChannel);
+                        $lastWeight = $channelData['weight'] ?? 0.0; // Track last weight for response
+                    }
+                } else {
+                    // Legacy single-channel format (backward compatibility)
+                    $microData->setMainAirPressure($point['main_air_pressure'] ?? null);
+                    $lastWeight = $this->calculateWeight($device, $microData, $point['weight'] ?? null);
+                    $microData->setWeight($lastWeight);
+                }
+
                 $em->persist($microData);
                 $processedCount++;
             }
@@ -369,20 +428,27 @@ class BridgeAPIController extends AbstractController
             ];
             
             $sendCoefficients = $data['request_coefficients'] ?? false;
-            $hasCalibration = $device->getRegressionIntercept() !== null ||
-                             $device->getRegressionAirPressureCoeff() !== null ||
-                             $device->getRegressionAmbientPressureCoeff() !== null ||
-                             $device->getRegressionAirTempCoeff() !== null;
-            
-            if ($sendCoefficients && $hasCalibration) {
-                $response['regression_coefficients'] = [
-                    'intercept' => $device->getRegressionIntercept() ?? 0.0,
-                    'air_pressure_coeff' => $device->getRegressionAirPressureCoeff() ?? 0.0,
-                    'ambient_pressure_coeff' => $device->getRegressionAmbientPressureCoeff() ?? 0.0,
-                    'air_temp_coeff' => $device->getRegressionAirTempCoeff() ?? 0.0
-                ];
+
+            if ($sendCoefficients) {
+                // Return calibration for all channels (new format)
+                $channelCalibrations = $channelService->getAllChannelCalibrations($device);
+                if (!empty($channelCalibrations)) {
+                    $response['channel_calibrations'] = $channelCalibrations;
+                }
+
+                // DEPRECATED: Legacy single-channel calibration for backward compatibility
+                $hasOldCalibration = $device->getRegressionIntercept() !== null ||
+                                    $device->getRegressionAirPressureCoeff() !== null;
+                if ($hasOldCalibration) {
+                    $response['regression_coefficients'] = [
+                        'intercept' => $device->getRegressionIntercept() ?? 0.0,
+                        'air_pressure_coeff' => $device->getRegressionAirPressureCoeff() ?? 0.0,
+                        'ambient_pressure_coeff' => $device->getRegressionAmbientPressureCoeff() ?? 0.0,
+                        'air_temp_coeff' => $device->getRegressionAirTempCoeff() ?? 0.0
+                    ];
+                }
             }
-            
+
             return new JsonResponse($response);
             
         } catch (\Exception $e) {

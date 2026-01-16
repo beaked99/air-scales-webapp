@@ -143,23 +143,54 @@ function updateDeviceDisplayWithLiveData(data, source = 'unknown') {
 
 // Update all sensor readings
 function updateCurrentReadings(data) {
-    // Weight with enhanced formatting
-    updateElementWithClass('weight-display', `${Math.round(data.weight).toLocaleString()} lbs`);
-    
-    // Pressures
-    updateElementWithClass('pressure-display', `${data.main_air_pressure.toFixed(1)} psi`);
-    updateElementWithClass('atmospheric-pressure-display', `${data.atmospheric_pressure.toFixed(1)} psi`);
-    
-    // Temperature 
-    updateElementWithClass('temperature-display', `${Math.round(data.temperature)}°F`);
-    
-    // GPS coordinates
-    updateElementWithClass('gps-display', `${data.gps_lat.toFixed(3)}, ${data.gps_lng.toFixed(3)}`);
-    
+    // Update channel data if available (new format)
+    if (data.channels && Array.isArray(data.channels)) {
+        data.channels.forEach(channelData => {
+            const channelIndex = channelData.channel_index;
+
+            // Update weight
+            const weightDisplay = document.getElementById(`channel-${channelIndex}-weight`);
+            if (weightDisplay && channelData.weight !== null && channelData.weight !== undefined) {
+                weightDisplay.textContent = `${Math.round(channelData.weight).toLocaleString()} lbs`;
+            }
+
+            // Update air pressure
+            const pressureDisplay = document.getElementById(`channel-${channelIndex}-pressure`);
+            if (pressureDisplay && channelData.air_pressure !== null && channelData.air_pressure !== undefined) {
+                pressureDisplay.textContent = `${channelData.air_pressure.toFixed(1)} psi`;
+            }
+        });
+    } else if (data.weight !== undefined || data.main_air_pressure !== undefined) {
+        // Legacy single-channel format (backward compatibility)
+        const weightDisplay = document.getElementById('channel-1-weight');
+        if (weightDisplay && data.weight !== null && data.weight !== undefined) {
+            weightDisplay.textContent = `${Math.round(data.weight).toLocaleString()} lbs`;
+        }
+
+        const pressureDisplay = document.getElementById('channel-1-pressure');
+        if (pressureDisplay && data.main_air_pressure !== null && data.main_air_pressure !== undefined) {
+            pressureDisplay.textContent = `${data.main_air_pressure.toFixed(1)} psi`;
+        }
+    }
+
+    // Environmental data (shared across all channels)
+    if (data.atmospheric_pressure !== null && data.atmospheric_pressure !== undefined) {
+        updateElementWithClass('atmospheric-pressure-display', `${data.atmospheric_pressure.toFixed(1)} psi`);
+    }
+
+    if (data.temperature !== null && data.temperature !== undefined) {
+        updateElementWithClass('temperature-display', `${Math.round(data.temperature)}°F`);
+    }
+
+    // GPS coordinates (from phone)
+    if (data.gps_lat !== null && data.gps_lng !== null && data.gps_lat !== undefined && data.gps_lng !== undefined) {
+        updateElementWithClass('gps-display', `${data.gps_lat.toFixed(3)}, ${data.gps_lng.toFixed(3)}`);
+    }
+
     // Signal strength
     const signalText = data.signal_strength ? `${data.signal_strength} dBm` : '-- dBm';
     updateElementWithClass('signal-display', signalText);
-    
+
     if (CONFIG.debug) console.log('📊 Updated all sensor readings');
 }
 
@@ -647,8 +678,14 @@ function handleBLEData(data) {
 
     // Transform BLE data to match server format
     const transformedData = {
+        // Multi-channel support
+        channels: data.channels || null,
+
+        // Legacy single-channel support (backward compatibility)
         weight: data.weight || 0,
         main_air_pressure: data.main_air_pressure || 0,
+
+        // Environmental data (shared)
         atmospheric_pressure: data.atmospheric_pressure || 0,
         temperature: data.temperature || 0,
         gps_lat: data.gps_lat || 0,

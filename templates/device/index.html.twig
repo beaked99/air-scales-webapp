@@ -66,30 +66,48 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <label class="block mb-2 text-sm text-gray-400">Weight</label>
-          <div id="weight-display" class="px-4 py-3 text-lg font-semibold text-gray-200 bg-gray-700 rounded-lg">
-            {% if device.latestMicroData %}
-              {{ device.latestMicroData.weight|number_format(0) }} lbs
-            {% else %}
-              -- lbs
-            {% endif %}
+      <!-- Channel Cards -->
+      <div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
+        {% for channelIndex in 1..2 %}
+          {% set channel = device.getChannel(channelIndex) %}
+          <div class="p-6 border border-gray-600 rounded-lg bg-gray-700/50">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-white">
+                {{ channel ? channel.displayLabel : ('Channel ' ~ channelIndex) }}
+              </h3>
+              {% if channel and not channel.enabled %}
+                <span class="px-2 py-1 text-xs text-gray-400 border border-gray-500 rounded-full">Disabled</span>
+              {% endif %}
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block mb-1 text-xs text-gray-400">Weight</label>
+                <div id="channel-{{ channelIndex }}-weight" class="px-3 py-2 text-lg font-semibold text-gray-200 bg-gray-800 rounded">
+                  -- lbs
+                </div>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs text-gray-400">Air Pressure</label>
+                <div id="channel-{{ channelIndex }}-pressure" class="px-3 py-2 text-gray-200 bg-gray-800 rounded">
+                  -- psi
+                </div>
+              </div>
+              {% if channel and channel.axleGroup %}
+                <div class="pt-2 text-xs text-gray-400 border-t border-gray-600">
+                  Axle Group: <span class="text-gray-300">{{ channel.axleGroup.label }}</span>
+                </div>
+              {% endif %}
+            </div>
           </div>
-        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Environmental Data (Shared) -->
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
-          <label class="block mb-2 text-sm text-gray-400">Main Air Bag Pressure</label>
-          <div id="pressure-display" class="px-4 py-3 text-gray-200 bg-gray-700 rounded-lg">
-            {% if device.latestMicroData %}
-              {{ device.latestMicroData.mainAirPressure|number_format(1) }} psi
-            {% else %}
-              -- psi
-            {% endif %}
-          </div>
-        </div>
-        <div>
-          <label class="block mb-2 text-sm text-gray-400">Ambient Temperature</label>
-          <div id="temperature-display" class="px-4 py-3 text-gray-200 bg-gray-700 rounded-lg">
+          <label class="block mb-2 text-xs text-gray-400">Temperature</label>
+          <div id="temperature-display" class="px-3 py-2 text-sm text-gray-200 bg-gray-700 rounded-lg">
             {% if device.latestMicroData %}
               {{ device.latestMicroData.temperature|number_format(0) }}°F
             {% else %}
@@ -98,8 +116,8 @@
           </div>
         </div>
         <div>
-          <label class="block mb-2 text-sm text-gray-400">Ambient Pressure</label>
-          <div id="atmospheric-pressure-display" class="px-4 py-3 text-gray-200 bg-gray-700 rounded-lg">
+          <label class="block mb-2 text-xs text-gray-400">Ambient Pressure</label>
+          <div id="atmospheric-pressure-display" class="px-3 py-2 text-sm text-gray-200 bg-gray-700 rounded-lg">
             {% if device.latestMicroData %}
               {{ device.latestMicroData.atmosphericPressure|number_format(1) }} psi
             {% else %}
@@ -108,9 +126,9 @@
           </div>
         </div>
         <div>
-          <label class="block mb-2 text-sm text-gray-400">GPS Location</label>
-          <div id="gps-display" class="px-4 py-3 font-mono text-sm text-gray-200 bg-gray-700 rounded-lg">
-            {% if device.latestMicroData %}
+          <label class="block mb-2 text-xs text-gray-400">GPS Location</label>
+          <div id="gps-display" class="px-3 py-2 text-xs text-gray-200 bg-gray-700 rounded-lg">
+            {% if device.latestMicroData and device.latestMicroData.gpsLat %}
               {{ device.latestMicroData.gpsLat|number_format(3) }}, {{ device.latestMicroData.gpsLng|number_format(3) }}
             {% else %}
               --, --
@@ -118,8 +136,8 @@
           </div>
         </div>
         <div>
-          <label class="block mb-2 text-sm text-gray-400">Signal Strength</label>
-          <div id="signal-display" class="px-4 py-3 text-gray-200 bg-gray-700 rounded-lg">
+          <label class="block mb-2 text-xs text-gray-400">Signal Strength</label>
+          <div id="signal-display" class="px-3 py-2 text-sm text-gray-200 bg-gray-700 rounded-lg">
             {% if device.signalStrength %}
               {{ device.signalStrength }} dBm
             {% else %}
