@@ -7,6 +7,7 @@ use App\Security\LoginAuthenticator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
@@ -26,7 +27,8 @@ class RegistrationController extends AbstractController
         EntityManagerInterface $entityManager,
         UserAuthenticatorInterface $userAuthenticator,
         LoginAuthenticator $authenticator,
-        RateLimiterFactoryInterface $rateLimiterFactory,
+        #[Autowire(service: 'limiter.registration')]
+        RateLimiterFactoryInterface $rateLimiter,
         MailerInterface $mailer
     ): Response {
         // Redirect if already logged in
@@ -38,7 +40,7 @@ class RegistrationController extends AbstractController
 
         if ($request->isMethod('POST')) {
             // Rate limiting check (3 attempts per 15 minutes per IP)
-            $limiter = $rateLimiterFactory->create($request->getClientIp());
+            $limiter = $rateLimiter->create($request->getClientIp());
             if (false === $limiter->consume(1)->isAccepted()) {
                 $error = 'Too many registration attempts. Please try again in 15 minutes.';
                 return $this->render('security/register.html.twig', ['error' => $error]);

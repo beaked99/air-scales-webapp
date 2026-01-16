@@ -6,6 +6,7 @@ use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
@@ -22,7 +23,8 @@ class PasswordResetController extends AbstractController
         Request $request,
         EntityManagerInterface $entityManager,
         MailerInterface $mailer,
-        RateLimiterFactoryInterface $rateLimiterFactory
+        #[Autowire(service: 'limiter.registration')]
+        RateLimiterFactoryInterface $rateLimiter
     ): Response {
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
@@ -33,7 +35,7 @@ class PasswordResetController extends AbstractController
 
         if ($request->isMethod('POST')) {
             // Rate limiting check (reuse registration limiter - 3 attempts per 15 minutes)
-            $limiter = $rateLimiterFactory->create($request->getClientIp());
+            $limiter = $rateLimiter->create($request->getClientIp());
             if (false === $limiter->consume(1)->isAccepted()) {
                 $error = 'Too many password reset attempts. Please try again in 15 minutes.';
                 return $this->render('security/forgot_password.html.twig', ['error' => $error]);
