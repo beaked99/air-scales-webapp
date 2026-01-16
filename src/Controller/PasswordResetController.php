@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -22,7 +22,7 @@ class PasswordResetController extends AbstractController
         Request $request,
         EntityManagerInterface $entityManager,
         MailerInterface $mailer,
-        RateLimiterFactory $registrationLimiter
+        RateLimiterFactoryInterface $registrationLimiter
     ): Response {
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
