@@ -20,10 +20,19 @@ class DeviceController extends AbstractController
     public function detail(int $id, EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        
+
+        // DEBUGGING - Remove after troubleshooting
+        error_log("=== DEVICE ACCESS DEBUG ===");
+        error_log("Requested Device ID: " . $id);
+        error_log("Current User ID: " . ($user ? $user->getId() : 'NULL'));
+        error_log("Current User Email: " . ($user ? $user->getEmail() : 'NULL'));
+
         // Get device with access control (same pattern as dashboard)
         $device = $this->getDeviceWithAccess($em, $id, $user);
-        
+
+        error_log("Device Found: " . ($device ? 'YES (ID: ' . $device->getId() . ')' : 'NO'));
+        error_log("=========================");
+
         if (!$device) {
             throw $this->createNotFoundException('Device not found or access denied');
         }
@@ -301,6 +310,7 @@ class DeviceController extends AbstractController
 
     private function getDeviceWithAccess(EntityManagerInterface $em, int $deviceId, $user): ?Device
     {
+        error_log("  Checking DeviceAccess records...");
         // First try to find device through access records (same as dashboard)
         $accessRecord = $em->getRepository(DeviceAccess::class)
             ->createQueryBuilder('a')
@@ -315,9 +325,11 @@ class DeviceController extends AbstractController
             ->getOneOrNullResult();
 
         if ($accessRecord) {
+            error_log("  Found via DeviceAccess record!");
             return $accessRecord->getDevice();
         }
 
+        error_log("  No DeviceAccess record. Checking soldTo field...");
         // Try purchased/claimed devices (soldTo)
         $device = $em->getRepository(Device::class)
             ->createQueryBuilder('d')
@@ -327,6 +339,12 @@ class DeviceController extends AbstractController
             ->setParameter('deviceId', $deviceId)
             ->getQuery()
             ->getOneOrNullResult();
+
+        if ($device) {
+            error_log("  Found via soldTo field!");
+        } else {
+            error_log("  Not found via soldTo either.");
+        }
 
         return $device;
     }

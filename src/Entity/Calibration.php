@@ -23,6 +23,10 @@ class Calibration
     #[ORM\JoinColumn(nullable: false)]
     private ?Device $device = null;
 
+    #[ORM\ManyToOne(targetEntity: DeviceChannel::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?DeviceChannel $deviceChannel = null;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $created_by = null;
@@ -68,6 +72,17 @@ class Calibration
     public function setDevice(?Device $device): self
     {
         $this->device = $device;
+        return $this;
+    }
+
+    public function getDeviceChannel(): ?DeviceChannel
+    {
+        return $this->deviceChannel;
+    }
+
+    public function setDeviceChannel(?DeviceChannel $deviceChannel): self
+    {
+        $this->deviceChannel = $deviceChannel;
         return $this;
     }
 
