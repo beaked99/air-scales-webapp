@@ -105,7 +105,7 @@
         <div class="space-y-2">
           {% for deviceRole in configuration.deviceRoles %}
             {% set device = deviceRole.device %}
-            <a href="{{ path('device_show', {id: device.id}) }}"
+            <a href="{{ path('device_detail', {id: device.id}) }}"
                class="block p-3 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors">
               <div class="flex items-center justify-between">
                 <div>
