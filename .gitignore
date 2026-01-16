@@ -60,3 +60,6 @@ fp-info-cache
 /webapp/public/bundles/
 .env
 .env.dev
+
+#production shit
+public/assets/
