@@ -18,6 +18,62 @@
             {{ device.id }},
             '{{ device.macAddress|upper }}'
         );
+
+        // Toggle Channel 2 enabled state
+        function toggleChannel2() {
+            if (confirm('Are you sure you want to toggle Channel 2? This will affect calibration and data collection.')) {
+                fetch('{{ path("device_toggle_channel_2", {id: device.id}) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(
+                            data.enabled ? 'Channel 2 Enabled' : 'Channel 2 Disabled',
+                            data.enabled ? 'Dual-channel mode is now active. You can calibrate both channels.' : 'Single-channel mode restored.',
+                            'success'
+                        );
+                        // Reload page to reflect changes
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        showToast('Error', data.error || 'Failed to toggle channel', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error('Toggle failed:', err);
+                    showToast('Error', 'Failed to toggle channel', 'error');
+                });
+            }
+        }
+
+        // Simple toast notification
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container') || createToastContainer();
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-lg shadow-lg border-l-4 ${
+                type === 'success' ? 'bg-green-900 border-green-500 text-green-100' :
+                type === 'error' ? 'bg-red-900 border-red-500 text-red-100' :
+                'bg-blue-900 border-blue-500 text-blue-100'
+            }`;
+            toast.innerHTML = `
+                <div class="font-semibold">${title}</div>
+                <div class="text-sm mt-1">${message}</div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'fixed z-50 space-y-2 top-4 right-4';
+            document.body.appendChild(container);
+            return container;
+        }
     </script>
 {% endblock %}
 
@@ -145,6 +201,57 @@
             {% endif %}
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Section: Channel Configuration -->
+    <section class="p-6 bg-gray-800">
+      <h2 class="mb-6 text-xl font-semibold text-white">Channel Configuration</h2>
+
+      <div class="space-y-4">
+        {% for channel in device.deviceChannels|sort((a, b) => a.channelIndex <=> b.channelIndex) %}
+        <div class="p-4 border border-gray-600 rounded-lg bg-gray-700/50">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-3">
+                <h3 class="font-medium text-white">{{ channel.displayLabel }}</h3>
+                <span class="px-2 py-1 text-xs rounded {% if channel.enabled %}bg-green-900/50 text-green-400{% else %}bg-gray-600 text-gray-400{% endif %}">
+                  {% if channel.enabled %}Enabled{% else %}Disabled{% endif %}
+                </span>
+              </div>
+              <p class="mt-1 text-sm text-gray-400">
+                {% if channel.enabled %}
+                  This channel is active and can be calibrated.
+                {% else %}
+                  Enable this channel to use dual-channel mode.
+                {% endif %}
+              </p>
+            </div>
+
+            {% if channel.channelIndex == 2 %}
+            <button
+              onclick="toggleChannel2()"
+              class="px-4 py-2 text-sm font-medium transition-colors rounded-lg {% if channel.enabled %}bg-orange-600 hover:bg-orange-700 text-white{% else %}bg-sky-600 hover:bg-sky-700 text-white{% endif %}"
+            >
+              {% if channel.enabled %}Disable{% else %}Enable{% endif %}
+            </button>
+            {% endif %}
+          </div>
+
+          {% if channel.enabled and channel.regressionAirPressureCoeff %}
+          <div class="pt-3 mt-3 text-xs border-t border-gray-600">
+            <span class="text-gray-400">Calibration: </span>
+            <span class="font-mono text-green-400">
+              R² = {{ channel.regressionRsq ? channel.regressionRsq|number_format(3) : 'N/A' }}
+            </span>
+            <span class="mx-2 text-gray-600">•</span>
+            <span class="font-mono text-green-400">
+              RMSE = {{ channel.regressionRmse ? (channel.regressionRmse|number_format(1) ~ ' lbs') : 'N/A' }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
       </div>
     </section>
 

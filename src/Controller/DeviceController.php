@@ -431,4 +431,31 @@ class DeviceController extends AbstractController
             return $days . ' days ago';
         }
     }
+
+    #[Route('/device/{id}/toggle-channel-2', name: 'device_toggle_channel_2', methods: ['POST'])]
+    public function toggleChannel2(int $id, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        $device = $this->getDeviceWithAccess($em, $id, $user);
+
+        if (!$device) {
+            return new JsonResponse(['error' => 'Device not found'], 404);
+        }
+
+        $channel2 = $device->getChannel(2);
+        if (!$channel2) {
+            return new JsonResponse(['error' => 'Channel 2 not found'], 404);
+        }
+
+        // Toggle the enabled state
+        $newState = !$channel2->isEnabled();
+        $channel2->setEnabled($newState);
+        $em->flush();
+
+        return new JsonResponse([
+            'success' => true,
+            'enabled' => $newState,
+            'label' => $channel2->getDisplayLabel()
+        ]);
+    }
 }
