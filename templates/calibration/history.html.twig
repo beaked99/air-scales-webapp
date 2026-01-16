@@ -25,75 +25,76 @@
         <span class="text-gray-400">Vehicle:</span>
         <span class="text-gray-100 ml-2">{{ device.vehicle ?: 'Unassigned' }}</span>
       </div>
-      <div>
-        <span class="text-gray-400">Total Calibrations:</span>
-        <span class="text-gray-100 ml-2">{{ calibrations|length }} point(s)</span>
-      </div>
     </div>
   </div>
 
-  <!-- Regression Model Info -->
-  <div class="bg-gray-800 rounded-lg p-6 mb-8">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-white">Current Regression Model</h2>
-      {% if calibrations|length >= 2 %}
-        <button id="force-regression" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">
-          Recalculate Model
-        </button>
+  <!-- Per-Channel Calibration History -->
+  {% for channelId, channelData in calibrationsByChannel %}
+    {% set channel = channelData.channel %}
+    {% set calibrations = channelData.calibrations %}
+    {% set coeffs = channelCoeffs[channelId] ?? null %}
+
+    <div id="channel-{{ channel ? channel.channelIndex : 'unknown' }}" class="bg-gray-800 rounded-lg mb-8">
+      <div class="p-6 border-b border-gray-700">
+        <h2 class="text-xl font-semibold text-white">
+          {{ channel ? channel.displayLabel : 'Unknown Channel' }}
+          <span class="ml-3 text-sm font-normal text-gray-400">({{ calibrations|length }} calibration points)</span>
+        </h2>
+      </div>
+
+      <!-- Regression Model for this channel -->
+      {% if coeffs %}
+      <div class="p-6 border-b border-gray-700 bg-gray-750">
+        <h3 class="text-lg font-medium text-white mb-3">Regression Model</h3>
+
+        {% if coeffs.intercept is not null or coeffs.airPressure is not null %}
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm mb-4">
+            {% if coeffs.airPressure is not null %}
+            <div>
+              <span class="text-gray-400">Scale Factor:</span>
+              <span class="text-green-400 ml-2 font-mono">{{ coeffs.airPressure|number_format(1) }} lbs/psi</span>
+            </div>
+            {% endif %}
+            {% if coeffs.airTemp is not null %}
+            <div>
+              <span class="text-gray-400">Temperature Coeff:</span>
+              <span class="text-green-400 ml-2 font-mono">{{ coeffs.airTemp|number_format(2) }} lbs/°F</span>
+            </div>
+            {% endif %}
+            {% if coeffs.rSquared is not null %}
+            <div>
+              <span class="text-gray-400">R²:</span>
+              <span class="text-blue-400 ml-2 font-mono">{{ coeffs.rSquared|number_format(3) }}</span>
+            </div>
+            {% endif %}
+            {% if coeffs.rmse is not null %}
+            <div>
+              <span class="text-gray-400">RMSE:</span>
+              <span class="text-blue-400 ml-2 font-mono">{{ coeffs.rmse|number_format(1) }} lbs</span>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="p-3 bg-gray-700 rounded">
+            <p class="text-gray-300 text-sm">
+              <strong>Equation:</strong>
+              {% set scaleFactor = coeffs.airPressure|number_format(1) %}
+              {% set tempCoeff = coeffs.airTemp|number_format(2) %}
+              {% if coeffs.airTemp|abs < 0.01 %}
+                Weight = {{ scaleFactor }} × (P<sub>bag</sub> - P<sub>ambient</sub>)
+              {% else %}
+                Weight = {{ scaleFactor }} × (P<sub>bag</sub> - P<sub>ambient</sub>) + {{ tempCoeff }} × T
+              {% endif %}
+            </p>
+          </div>
+        {% else %}
+          <p class="text-gray-400 text-sm">No calibration model. Add calibration points to generate.</p>
+        {% endif %}
+      </div>
       {% endif %}
-    </div>
-    
-    {% if regressionCoeffs.intercept is not null %}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-        <div>
-          <span class="text-gray-400">Scale Factor:</span>
-          <span class="text-green-400 ml-2 font-mono">{{ regressionCoeffs.airPressure|number_format(1) }} lbs/psi</span>
-        </div>
-        <div>
-          <span class="text-gray-400">Temperature Coeff:</span>
-          <span class="text-green-400 ml-2 font-mono">{{ regressionCoeffs.airTemp|number_format(2) }} lbs/°F</span>
-        </div>
-        {% if regressionCoeffs.rSquared is not null %}
-        <div>
-          <span class="text-gray-400">R-Squared:</span>
-          <span class="text-blue-400 ml-2 font-mono">{{ regressionCoeffs.rSquared|number_format(3) }}</span>
-        </div>
-        {% endif %}
-        {% if regressionCoeffs.rmse is not null %}
-        <div>
-          <span class="text-gray-400">RMSE:</span>
-          <span class="text-blue-400 ml-2 font-mono">{{ regressionCoeffs.rmse|number_format(1) }} lbs</span>
-        </div>
-        {% endif %}
-      </div>
 
-      <div class="mt-4 p-3 bg-gray-700 rounded">
-        <p class="text-gray-300 text-sm">
-          <strong>Model Equation:</strong>
-          {% set scaleFactor = regressionCoeffs.airPressure|number_format(1) %}
-          {% set tempCoeff = regressionCoeffs.airTemp|number_format(2) %}
-          {% if regressionCoeffs.airTemp|abs < 0.01 %}
-            Weight = {{ scaleFactor }} × (P<sub>bag</sub> - P<sub>ambient</sub>)
-          {% else %}
-            Weight = {{ scaleFactor }} × (P<sub>bag</sub> - P<sub>ambient</sub>) + {{ tempCoeff }} × T
-          {% endif %}
-        </p>
-      </div>
-    {% else %}
-      <div class="text-center py-8">
-        <p class="text-gray-400 mb-4">No regression model available.</p>
-        <p class="text-gray-500 text-sm">Add at least 2 calibration points to generate a model.</p>
-      </div>
-    {% endif %}
-  </div>
-
-  <!-- Calibration Data -->
-  <div class="bg-gray-800 rounded-lg mb-8">
-    <div class="p-6 border-b border-gray-700">
-      <h2 class="text-xl font-semibold text-white">Calibration Data Points</h2>
-    </div>
-    
-    {% if calibrations|length > 0 %}
+      <!-- Calibration points table -->
+      {% if calibrations|length > 0 %}
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-gray-700">
@@ -142,16 +143,25 @@
           </tbody>
         </table>
       </div>
-    {% else %}
-      <div class="p-6 text-center">
-        <p class="text-gray-400 mb-4">No calibration data available.</p>
-        <a href="{{ path('device_calibration', { id: device.id }) }}" 
-           class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">
-          Add First Calibration Point
-        </a>
-      </div>
-    {% endif %}
-  </div>
+      {% else %}
+        <div class="p-6 text-center">
+          <p class="text-gray-400 mb-4">No calibration points for this channel yet.</p>
+          <a href="{{ path('device_calibration', { id: device.id }) }}"
+             class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">
+            Add Calibration Point
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="bg-gray-800 rounded-lg p-6 text-center">
+      <p class="text-gray-400 mb-4">No calibration data available.</p>
+      <a href="{{ path('device_calibration', { id: device.id }) }}"
+         class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded inline-block">
+        Add First Calibration Point
+      </a>
+    </div>
+  {% endfor %}
 
   <!-- Navigation -->
   <div class="text-center space-x-4">

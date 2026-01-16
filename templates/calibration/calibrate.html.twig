@@ -101,11 +101,17 @@
 
       <!-- Calibration Count -->
       <div class="mx-4 mb-4">
+        {% set channelCalCount = 0 %}
+        {% for cal in device.calibrations %}
+          {% if cal.deviceChannel and cal.deviceChannel.id == channel.id %}
+            {% set channelCalCount = channelCalCount + 1 %}
+          {% endif %}
+        {% endfor %}
         <a
-          href="{{ path('device_calibration_history', { id: device.id }) }}"
+          href="{{ path('device_calibration_history', { id: device.id }) }}#channel-{{ channel.channelIndex }}"
           class="block p-3 text-center text-sm bg-gray-800 border border-gray-700 rounded-lg text-sky-400 hover:text-sky-300 hover:border-sky-500 transition-colors"
         >
-          View Calibration History ({{ calibrationCount }} points)
+          View Calibration History ({{ channelCalCount }} points for this channel)
         </a>
       </div>
     </div>

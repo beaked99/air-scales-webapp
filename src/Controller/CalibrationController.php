@@ -149,23 +149,46 @@ class CalibrationController extends AbstractController
         
         $calibrations = $em->getRepository(Calibration::class)
             ->createQueryBuilder('c')
+            ->leftJoin('c.deviceChannel', 'dc')
+            ->addSelect('dc')
             ->where('c.device = :device')
             ->setParameter('device', $device)
-            ->orderBy('c.created_at', 'DESC')  // Using created_at from TimestampableTrait
+            ->orderBy('dc.channelIndex', 'ASC')
+            ->addOrderBy('c.created_at', 'DESC')
             ->getQuery()
             ->getResult();
-        
+
+        // Group calibrations by channel
+        $calibrationsByChannel = [];
+        foreach ($calibrations as $cal) {
+            $channelId = $cal->getDeviceChannel() ? $cal->getDeviceChannel()->getId() : 'unknown';
+            if (!isset($calibrationsByChannel[$channelId])) {
+                $calibrationsByChannel[$channelId] = [
+                    'channel' => $cal->getDeviceChannel(),
+                    'calibrations' => []
+                ];
+            }
+            $calibrationsByChannel[$channelId]['calibrations'][] = $cal;
+        }
+
+        // Get regression coefficients per channel
+        $channelCoeffs = [];
+        foreach ($device->getDeviceChannels() as $channel) {
+            $channelCoeffs[$channel->getId()] = [
+                'channel' => $channel,
+                'intercept' => $channel->getRegressionIntercept(),
+                'airPressure' => $channel->getRegressionAirPressureCoeff(),
+                'ambientPressure' => $channel->getRegressionAmbientPressureCoeff(),
+                'airTemp' => $channel->getRegressionAirTempCoeff(),
+                'rSquared' => $channel->getRegressionRsq(),
+                'rmse' => $channel->getRegressionRmse()
+            ];
+        }
+
         return $this->render('calibration/history.html.twig', [
             'device' => $device,
-            'calibrations' => $calibrations,
-            'regressionCoeffs' => [
-                'intercept' => $device->getRegressionIntercept(),
-                'airPressure' => $device->getRegressionAirPressureCoeff(),
-                'ambientPressure' => $device->getRegressionAmbientPressureCoeff(),
-                'airTemp' => $device->getRegressionAirTempCoeff(),
-                'rSquared' => $device->getRegressionRsq(),
-                'rmse' => $device->getRegressionRmse()
-            ]
+            'calibrationsByChannel' => $calibrationsByChannel,
+            'channelCoeffs' => $channelCoeffs
         ]);
     }
     
