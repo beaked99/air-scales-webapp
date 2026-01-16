@@ -26,7 +26,7 @@ class RegistrationController extends AbstractController
         EntityManagerInterface $entityManager,
         UserAuthenticatorInterface $userAuthenticator,
         LoginAuthenticator $authenticator,
-        RateLimiterFactoryInterface $registrationLimiter,
+        RateLimiterFactoryInterface $rateLimiterFactory,
         MailerInterface $mailer
     ): Response {
         // Redirect if already logged in
@@ -38,7 +38,7 @@ class RegistrationController extends AbstractController
 
         if ($request->isMethod('POST')) {
             // Rate limiting check (3 attempts per 15 minutes per IP)
-            $limiter = $registrationLimiter->create($request->getClientIp());
+            $limiter = $rateLimiterFactory->create($request->getClientIp());
             if (false === $limiter->consume(1)->isAccepted()) {
                 $error = 'Too many registration attempts. Please try again in 15 minutes.';
                 return $this->render('security/register.html.twig', ['error' => $error]);

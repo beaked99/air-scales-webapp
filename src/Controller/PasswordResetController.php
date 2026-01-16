@@ -22,7 +22,7 @@ class PasswordResetController extends AbstractController
         Request $request,
         EntityManagerInterface $entityManager,
         MailerInterface $mailer,
-        RateLimiterFactoryInterface $registrationLimiter
+        RateLimiterFactoryInterface $rateLimiterFactory
     ): Response {
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
@@ -33,7 +33,7 @@ class PasswordResetController extends AbstractController
 
         if ($request->isMethod('POST')) {
             // Rate limiting check (reuse registration limiter - 3 attempts per 15 minutes)
-            $limiter = $registrationLimiter->create($request->getClientIp());
+            $limiter = $rateLimiterFactory->create($request->getClientIp());
             if (false === $limiter->consume(1)->isAccepted()) {
                 $error = 'Too many password reset attempts. Please try again in 15 minutes.';
                 return $this->render('security/forgot_password.html.twig', ['error' => $error]);
