@@ -116,6 +116,22 @@ class Device
     #[ORM\Column(type: 'string', length: 17, nullable: true)]
     private ?string $masterDeviceMac = null; // MAC of master device if this is a slave
 
+    // Virtual Steer Axle fields
+    #[ORM\Column(type: 'boolean')]
+    private bool $hasVirtualSteer = false;
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $wheelbase = null; // inches - distance from steer to drive axle centers
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $kingpinDistance = null; // inches - distance from drive axle center to kingpin (optional, can be learned)
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $virtualSteerIntercept = null; // learned empty steer weight
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $virtualSteerCoeff = null; // learned coefficient for drive weight effect
+
     public function __construct()
     {
         $this->calibrations = new ArrayCollection();
@@ -260,6 +276,22 @@ class Device
     public function setConnectedSlaves(?array $connectedSlaves): self { $this->connectedSlaves = $connectedSlaves; return $this; }
     public function getMasterDeviceMac(): ?string { return $this->masterDeviceMac; }
     public function setMasterDeviceMac(?string $masterDeviceMac): self { $this->masterDeviceMac = $masterDeviceMac; return $this; }
+
+    // Virtual Steer getters/setters
+    public function hasVirtualSteer(): bool { return $this->hasVirtualSteer; }
+    public function setHasVirtualSteer(bool $hasVirtualSteer): self { $this->hasVirtualSteer = $hasVirtualSteer; return $this; }
+
+    public function getWheelbase(): ?float { return $this->wheelbase; }
+    public function setWheelbase(?float $wheelbase): self { $this->wheelbase = $wheelbase; return $this; }
+
+    public function getKingpinDistance(): ?float { return $this->kingpinDistance; }
+    public function setKingpinDistance(?float $kingpinDistance): self { $this->kingpinDistance = $kingpinDistance; return $this; }
+
+    public function getVirtualSteerIntercept(): ?float { return $this->virtualSteerIntercept; }
+    public function setVirtualSteerIntercept(?float $virtualSteerIntercept): self { $this->virtualSteerIntercept = $virtualSteerIntercept; return $this; }
+
+    public function getVirtualSteerCoeff(): ?float { return $this->virtualSteerCoeff; }
+    public function setVirtualSteerCoeff(?float $virtualSteerCoeff): self { $this->virtualSteerCoeff = $virtualSteerCoeff; return $this; }
 
     // Mesh helper methods
     public function isMeshMaster(): bool { return $this->currentRole === 'master'; }

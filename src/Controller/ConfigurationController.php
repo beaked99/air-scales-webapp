@@ -119,6 +119,7 @@ class ConfigurationController extends AbstractController
 
         if ($request->isMethod('POST')) {
             $name = $request->request->get('name');
+
             if ($name) {
                 $configuration->setName($name);
                 $em->flush();
@@ -127,10 +128,12 @@ class ConfigurationController extends AbstractController
         }
 
         $devices = $this->getUserDevices($em, $user);
+        $axleGroups = $em->getRepository(AxleGroup::class)->findAll();
 
         return $this->render('configuration/edit.html.twig', [
             'configuration' => $configuration,
             'devices' => $devices,
+            'axleGroups' => $axleGroups,
         ]);
     }
 

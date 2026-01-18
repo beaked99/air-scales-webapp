@@ -106,14 +106,64 @@
           {% for deviceRole in configuration.deviceRoles %}
             {% set device = deviceRole.device %}
             <div class="p-3 bg-gray-750 border border-gray-600 rounded-lg">
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between mb-2">
                 <div>
                   <div class="font-medium">{{ device.serialNumber ?: 'AS25-' ~ device.id }}</div>
                   <div class="text-xs text-gray-400">{{ deviceRole.role }}</div>
+                  {% if device.hasVirtualSteer %}
+                    <div class="text-xs text-purple-400 mt-1"><i class="fas fa-calculator mr-1"></i>Virtual Steer Enabled</div>
+                  {% endif %}
                 </div>
-                <button onclick="removeDevice({{ deviceRole.id }})" class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded">
-                  Remove
-                </button>
+                <div class="flex gap-2">
+                  <button onclick="toggleDeviceSettings({{ device.id }})" class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-500 rounded">
+                    <i class="fas fa-cog"></i>
+                  </button>
+                  <button onclick="removeDevice({{ deviceRole.id }})" class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded">
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              <!-- Device Settings Panel (collapsed by default) -->
+              <div id="device-settings-{{ device.id }}" class="hidden mt-3 pt-3 border-t border-gray-500">
+                <h4 class="text-sm font-semibold text-white mb-3">Virtual Steer Axle Settings</h4>
+
+                <div class="space-y-3">
+                  <div class="flex items-center gap-3">
+                    <input type="checkbox" id="has_virtual_steer_{{ device.id }}" {{ device.hasVirtualSteer ? 'checked' : '' }}
+                           onchange="toggleDeviceVirtualSteer({{ device.id }})"
+                           class="w-4 h-4 bg-gray-700 border-gray-600 rounded focus:ring-purple-400">
+                    <label for="has_virtual_steer_{{ device.id }}" class="text-sm text-gray-300">
+                      Enable Virtual Steer for this device
+                    </label>
+                  </div>
+
+                  <div id="virtual-steer-fields-{{ device.id }}" class="{{ device.hasVirtualSteer ? '' : 'hidden' }} space-y-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-400 mb-1">
+                        Wheelbase Length (inches)
+                        <span class="text-gray-500">- Steer to drive axle center</span>
+                      </label>
+                      <input type="number" id="wheelbase_{{ device.id }}" value="{{ device.wheelbase }}" step="0.1"
+                             placeholder="e.g., 244"
+                             class="w-full px-3 py-2 text-sm bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:border-purple-400">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-medium text-gray-400 mb-1">
+                        Kingpin Distance (inches) <span class="text-gray-500">- Optional, system will estimate</span>
+                      </label>
+                      <input type="number" id="kingpin_distance_{{ device.id }}" value="{{ device.kingpinDistance }}" step="0.1"
+                             placeholder="Leave blank to auto-calculate"
+                             class="w-full px-3 py-2 text-sm bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:border-purple-400">
+                    </div>
+
+                    <button onclick="saveDeviceVirtualSteer({{ device.id }})"
+                            class="w-full py-2 text-sm font-semibold bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors">
+                      Save Virtual Steer Settings
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           {% endfor %}
@@ -132,11 +182,9 @@
               {% endfor %}
             </select>
             <select id="role-select" class="px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:border-sky-400">
-              <option value="tractor">Tractor</option>
-              <option value="trailer">Trailer</option>
-              <option value="steer">Steer</option>
-              <option value="drive">Drive</option>
-              <option value="tandem">Tandem</option>
+              {% for axleGroup in axleGroups %}
+                <option value="{{ axleGroup.name }}">{{ axleGroup.label ?: axleGroup.name }}</option>
+              {% endfor %}
             </select>
             <button onclick="addDevice()" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg">
               Add
@@ -204,6 +252,53 @@
 </div>
 
 <script>
+function toggleDeviceSettings(deviceId) {
+  const panel = document.getElementById(`device-settings-${deviceId}`);
+  panel.classList.toggle('hidden');
+}
+
+function toggleDeviceVirtualSteer(deviceId) {
+  const checkbox = document.getElementById(`has_virtual_steer_${deviceId}`);
+  const fields = document.getElementById(`virtual-steer-fields-${deviceId}`);
+
+  if (checkbox.checked) {
+    fields.classList.remove('hidden');
+  } else {
+    fields.classList.add('hidden');
+  }
+}
+
+function saveDeviceVirtualSteer(deviceId) {
+  const hasVirtualSteer = document.getElementById(`has_virtual_steer_${deviceId}`).checked;
+  const wheelbase = document.getElementById(`wheelbase_${deviceId}`).value;
+  const kingpinDistance = document.getElementById(`kingpin_distance_${deviceId}`).value;
+
+  const data = {
+    has_virtual_steer: hasVirtualSteer ? '1' : '0',
+    wheelbase: wheelbase || null,
+    kingpin_distance: kingpinDistance || null
+  };
+
+  fetch(`/device/${deviceId}/update-virtual-steer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Virtual Steer settings saved successfully!');
+      window.location.reload();
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    alert('Failed to save settings');
+    console.error(err);
+  });
+}
+
 function toggleShared() {
   fetch('/configuration/{{ configuration.id }}/toggle-shared', {
     method: 'POST',

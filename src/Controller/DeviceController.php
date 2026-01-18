@@ -458,4 +458,35 @@ class DeviceController extends AbstractController
             'label' => $channel2->getDisplayLabel()
         ]);
     }
+
+    #[Route('/device/{id}/update-virtual-steer', name: 'device_update_virtual_steer', methods: ['POST'])]
+    public function updateVirtualSteer(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        $device = $this->getDeviceWithAccess($em, $id, $user);
+
+        if (!$device) {
+            return new JsonResponse(['error' => 'Device not found'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        $hasVirtualSteer = ($data['has_virtual_steer'] ?? '0') === '1';
+        $wheelbase = !empty($data['wheelbase']) ? (float)$data['wheelbase'] : null;
+        $kingpinDistance = !empty($data['kingpin_distance']) ? (float)$data['kingpin_distance'] : null;
+
+        $device->setHasVirtualSteer($hasVirtualSteer);
+        $device->setWheelbase($wheelbase);
+        $device->setKingpinDistance($kingpinDistance);
+
+        $em->flush();
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => 'Virtual steer settings updated successfully',
+            'has_virtual_steer' => $hasVirtualSteer,
+            'wheelbase' => $wheelbase,
+            'kingpin_distance' => $kingpinDistance
+        ]);
+    }
 }
