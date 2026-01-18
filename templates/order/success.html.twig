@@ -95,9 +95,9 @@
       <h3 class="text-lg sm:text-xl font-bold text-white mb-3"><i class="fas fa-gift mr-2"></i>Your Free Subscription</h3>
       <p class="text-sm sm:text-base text-gray-300">
         {% if order.quantity == 1 %}
-          Your order includes <strong>6 months of free subscription for 1 user</strong>. When you connect your device and activate it, you'll automatically receive this benefit.
+          Your order includes <strong>6 months of premium AirScales App subscription</strong>. When you connect your device for the first time, you'll have the option to activate the premium subscription on your account.
         {% else %}
-          Your order includes <strong>6 months of free subscription for {{ order.quantity }} users</strong> (one per device). When you connect each device and activate it, you'll receive the subscription benefit. You can use these for multiple users or combine them for extended service.
+          Your order includes <strong>{{ order.quantity * 6 }} months of premium AirScales App subscription (6 months × {{ order.quantity }} devices)</strong>. When you connect each device for the first time, you'll have the option to activate its premium subscription on your account or assign it to another user.
         {% endif %}
       </p>
     </div>

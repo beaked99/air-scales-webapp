@@ -30,31 +30,29 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getOneOrNullResult();
 
-        // Get axle groups with live weights if configuration exists
-        $axleGroups = [];
+        // Calculate live weights for each device channel
         $totalWeight = 0;
-        $bluetoothStatus = null;
 
         if ($activeConfiguration) {
-            foreach ($activeConfiguration->getAxleGroups() as $axleGroup) {
-                $weight = 0;
-                $channelCount = $axleGroup->getDeviceChannels()->count();
-                $calibratedChannels = 0;
+            foreach ($activeConfiguration->getDeviceRoles() as $deviceRole) {
+                $device = $deviceRole->getDevice();
+                if (!$device) continue;
 
-                // Calculate total weight for this axle group from all channels
-                foreach ($axleGroup->getDeviceChannels() as $channel) {
-                    $device = $channel->getDevice();
+                // Get latest data for this device
+                $latestData = $em->getRepository(MicroData::class)
+                    ->createQueryBuilder('m')
+                    ->where('m.device = :device')
+                    ->setParameter('device', $device)
+                    ->orderBy('m.id', 'DESC')
+                    ->setMaxResults(1)
+                    ->getQuery()
+                    ->getOneOrNullResult();
 
-                    // Get latest data for this device
-                    $latestData = $em->getRepository(MicroData::class)
-                        ->createQueryBuilder('m')
-                        ->where('m.device = :device')
-                        ->setParameter('device', $device)
-                        ->orderBy('m.id', 'DESC')
-                        ->setMaxResults(1)
-                        ->getQuery()
-                        ->getOneOrNullResult();
+                // Calculate weight for each enabled channel
+                foreach ($device->getDeviceChannels() as $channel) {
+                    if (!$channel->isEnabled()) continue;
 
+                    $weight = 0;
                     if ($latestData && $channel->getRegressionIntercept() !== null) {
                         // Get channel-specific data if available
                         $channelData = null;
@@ -69,34 +67,17 @@ class DashboardController extends AbstractController
 
                         // Calculate weight using channel calibration
                         $airPressure = $channelData['air_pressure'] ?? $latestData->getMainAirPressure();
-                        $weight += $channel->getRegressionIntercept() +
-                                   ($channel->getRegressionAirPressureCoeff() * $airPressure);
-                        $calibratedChannels++;
+                        $weight = $channel->getRegressionIntercept() +
+                                 ($channel->getRegressionAirPressureCoeff() * $airPressure);
                     }
+
+                    // Store calculated weight on the channel object for template access
+                    $channel->calculatedWeight = $weight;
+                    $totalWeight += $weight;
                 }
 
-                $totalWeight += $weight;
-
-                $axleGroups[] = [
-                    'entity' => $axleGroup,
-                    'weight' => $weight,
-                    'status' => $axleGroup->getCalibrationStatus(),
-                    'points' => $axleGroup->getMinCalibrationPoints(),
-                    'channelCount' => $channelCount,
-                    'calibratedChannels' => $calibratedChannels,
-                ];
-            }
-
-            // Check for BLE hub device (master role)
-            foreach ($activeConfiguration->getDeviceRoles() as $deviceRole) {
-                $device = $deviceRole->getDevice();
-                if ($device->getCurrentRole() === 'master') {
-                    $bluetoothStatus = [
-                        'device' => $device,
-                        'connected' => $this->checkDeviceConnected($device, $em),
-                    ];
-                    break;
-                }
+                // Store connection status on device for template access
+                $device->isConnected = $this->checkDeviceConnected($device, $em);
             }
         }
 
@@ -104,9 +85,7 @@ class DashboardController extends AbstractController
 
         return $this->render('dashboard/index.html.twig', [
             'activeConfiguration' => $activeConfiguration,
-            'axleGroups' => $axleGroups,
             'totalWeight' => $totalWeight,
-            'bluetoothStatus' => $bluetoothStatus,
             'hasActiveSubscription' => $hasActiveSubscription,
         ]);
     }

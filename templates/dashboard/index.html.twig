@@ -44,107 +44,94 @@
     {% endif %}
 
     {% if activeConfiguration %}
-      <!-- Active Configuration Header -->
-      <section class="m-4 p-4 bg-gray-800 border border-gray-700 rounded-lg">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-lg font-semibold text-white">{{ activeConfiguration.name }}</h2>
-          <a href="{{ path('configuration_edit', {id: activeConfiguration.id}) }}" class="text-sm text-gray-400 hover:text-sky-400">
-            <i class="fas fa-cog"></i>
-          </a>
-        </div>
-
-        <!-- Bluetooth Status -->
-        {% if bluetoothStatus %}
-          <div class="flex items-center gap-2 text-sm">
-            {% if bluetoothStatus.connected %}
-              <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span class="text-green-400">Connected to {{ bluetoothStatus.device.serialNumber ?: 'AS25-' ~ bluetoothStatus.device.id }}</span>
-            {% else %}
-              <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
-              <span class="text-gray-400">Not connected - Tap to connect</span>
-            {% endif %}
+      <!-- Active Configuration Card -->
+      <a href="{{ path('configuration_edit', {id: activeConfiguration.id}) }}" class="block m-4">
+        <div class="p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-sky-600 transition-colors">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-white">{{ activeConfiguration.name }}</h2>
+            <i class="text-gray-400 fas fa-chevron-right"></i>
           </div>
-        {% else %}
-          <div class="text-sm text-gray-500">No BLE hub configured</div>
-        {% endif %}
-      </section>
 
-      <!-- Total Weight Display -->
-      <section class="m-4 p-6 text-center bg-gray-800 border border-gray-700 rounded-lg">
-        <div class="mb-2 text-sm tracking-wider text-gray-400 uppercase">Total Weight</div>
-        <div class="flex items-end justify-center mb-2 space-x-2">
-          {% if totalWeight > 0 %}
-            <div class="text-5xl font-bold text-white">{{ totalWeight|number_format(0) }}</div>
-            <div class="mb-2 text-xl text-gray-400">lbs</div>
+          {% if activeConfiguration.deviceRoles|length == 0 %}
+            <div class="py-8 text-center text-gray-400">
+              <p class="mb-2">No devices configured</p>
+              <p class="text-sm">Click to add devices</p>
+            </div>
           {% else %}
-            <div class="text-5xl font-bold text-gray-500">--</div>
-            <div class="mb-2 text-xl text-gray-400">lbs</div>
+            <!-- Device Channels List -->
+            <div class="space-y-3 mb-4">
+              {% for deviceRole in activeConfiguration.deviceRoles %}
+                {% set device = deviceRole.device %}
+                {% if device %}
+                  <div class="p-3 bg-gray-750 border border-gray-600 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-white">{{ device.serialNumber ?: 'AS25-' ~ device.id }}</span>
+                        <span class="text-xs text-gray-400">({{ deviceRole.role }})</span>
+                      </div>
+                      {% if device.isConnected is defined and device.isConnected %}
+                        {% if device.currentRole == 'master' %}
+                          <div class="flex items-center gap-1 text-xs">
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-green-400">BLE</span>
+                          </div>
+                        {% else %}
+                          <div class="flex items-center gap-1 text-xs">
+                            <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                            <span class="text-blue-400">Mesh</span>
+                          </div>
+                        {% endif %}
+                      {% else %}
+                        <div class="flex items-center gap-1 text-xs">
+                          <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                          <span class="text-gray-400">Offline</span>
+                        </div>
+                      {% endif %}
+                    </div>
+
+                    <!-- Device Channels -->
+                    {% for channel in device.deviceChannels|sort((a, b) => a.channelIndex <=> b.channelIndex) %}
+                      {% if channel.enabled %}
+                        <div class="flex items-center justify-between py-1 text-sm">
+                          <span class="text-gray-300">Channel {{ channel.channelIndex }}</span>
+                          <span class="font-semibold text-white">
+                            {% if channel.calculatedWeight is defined and channel.calculatedWeight > 0 %}
+                              {{ channel.calculatedWeight|number_format(0) }} lbs
+                            {% else %}
+                              -- lbs
+                            {% endif %}
+                          </span>
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            <!-- Total Weight -->
+            <div class="pt-3 border-t border-gray-600">
+              <div class="flex items-center justify-between">
+                <span class="text-lg font-semibold text-gray-300">TOTAL</span>
+                <span class="text-2xl font-bold text-white">
+                  {% if totalWeight > 0 %}
+                    {{ totalWeight|number_format(0) }} lbs
+                  {% else %}
+                    -- lbs
+                  {% endif %}
+                </span>
+              </div>
+            </div>
           {% endif %}
         </div>
-      </section>
+      </a>
 
-      <!-- Axle Groups -->
-      <section class="m-4">
-        <h2 class="mb-3 text-lg font-semibold">Axle Groups</h2>
-
-        {% if axleGroups|length == 0 %}
-          <div class="p-8 text-center bg-gray-800 border border-gray-700 rounded-lg">
-            <p class="mb-4 text-gray-400">No axle groups configured yet.</p>
-            <a href="{{ path('configuration_edit', {id: activeConfiguration.id}) }}" class="inline-block px-6 py-3 font-medium text-white rounded-lg bg-sky-600 hover:bg-sky-700">
-              Add Devices
-            </a>
-          </div>
-        {% else %}
-          <div class="space-y-3">
-            {% for item in axleGroups %}
-              {% set axleGroup = item.entity %}
-              <div class="p-4 bg-gray-800 border border-gray-700 rounded-lg">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-3">
-                    <h3 class="text-lg font-semibold">{{ axleGroup.label }}</h3>
-                    {% if item.status == 'good' %}
-                      <span class="px-2 py-1 text-xs rounded bg-green-900/50 text-green-400">
-                        ✓ Calibrated ({{ item.points }} pts)
-                      </span>
-                    {% elseif item.status == 'warning' %}
-                      <span class="px-2 py-1 text-xs rounded bg-yellow-900/50 text-yellow-400">
-                        ⚠️ Needs more ({{ item.points }} pts)
-                      </span>
-                    {% else %}
-                      <span class="px-2 py-1 text-xs rounded bg-red-900/50 text-red-400">
-                        ❌ Not calibrated
-                      </span>
-                    {% endif %}
-                  </div>
-                  <div class="text-2xl font-bold text-white">
-                    {% if item.weight > 0 %}
-                      {{ item.weight|number_format(0) }} lbs
-                    {% else %}
-                      -- lbs
-                    {% endif %}
-                  </div>
-                </div>
-                <div class="text-xs text-gray-400">
-                  {{ item.channelCount }} channel{{ item.channelCount != 1 ? 's' : '' }}
-                  {% if item.calibratedChannels > 0 %}
-                    ({{ item.calibratedChannels }} calibrated)
-                  {% endif %}
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-
-          <!-- Quick Actions -->
-          <div class="mt-4 space-y-2">
-            <a href="{{ path('configuration_bulk_calibration', {id: activeConfiguration.id}) }}" class="block w-full py-4 text-center font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 transition-colors">
-              📝 Add Scale Weights
-            </a>
-            <a href="{{ path('configuration_show', {id: activeConfiguration.id}) }}" class="block w-full py-3 text-center font-medium text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors">
-              View Configuration Details
-            </a>
-          </div>
-        {% endif %}
-      </section>
+      <!-- Quick Actions -->
+      <div class="m-4 space-y-2">
+        <a href="{{ path('configuration_bulk_calibration', {id: activeConfiguration.id}) }}" class="block w-full py-4 text-center font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 transition-colors">
+          📝 Add Scale Weights
+        </a>
+      </div>
 
     {% else %}
       <!-- No Active Configuration -->
