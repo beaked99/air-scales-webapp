@@ -296,55 +296,50 @@ class ConfigurationController extends AbstractController
             throw $this->createAccessDeniedException('You do not have access to this configuration');
         }
 
-        // Build axle groups from device roles
-        $axleGroupsMap = [];
-        $virtualSteerDevices = [];
+        // Build list of devices with their channels in display order
+        $deviceList = [];
 
         foreach ($configuration->getDeviceRoles() as $deviceRole) {
             $device = $deviceRole->getDevice();
-            $roleName = $deviceRole->getRole();
 
             if (!$device) continue;
 
-            // Track devices with virtual steer enabled
+            // Build combined sorted array of channels + virtual steer for this device
+            $allChannelItems = [];
+
+            // Add virtual steer if enabled
             if ($device->hasVirtualSteer()) {
-                $virtualSteerDevices[] = $device;
-            }
-
-            // Get or create entry for this role
-            if (!isset($axleGroupsMap[$roleName])) {
-                // Find the AxleGroup entity by name
-                $axleGroupEntity = $em->getRepository(AxleGroup::class)->findOneBy(['name' => $roleName]);
-                if (!$axleGroupEntity) continue;
-
-                $axleGroupsMap[$roleName] = [
-                    'entity' => $axleGroupEntity,
-                    'channels' => [],
+                $allChannelItems[] = [
+                    'type' => 'virtual-steer',
+                    'order' => $device->getVirtualSteerDisplayOrder() ?? 0,
+                    'device' => $device,
                 ];
             }
 
-            // Add all enabled channels from this device to this axle group
+            // Add regular channels
             foreach ($device->getDeviceChannels() as $channel) {
                 if ($channel->isEnabled()) {
-                    $axleGroupsMap[$roleName]['channels'][] = $channel;
+                    $allChannelItems[] = [
+                        'type' => 'channel',
+                        'order' => $channel->getDisplayOrder() ?? ($channel->getChannelIndex() + 100),
+                        'channel' => $channel,
+                    ];
                 }
             }
+
+            // Sort by display order
+            usort($allChannelItems, function($a, $b) {
+                return $a['order'] <=> $b['order'];
+            });
+
+            $deviceList[] = [
+                'device' => $device,
+                'role' => $deviceRole->getRole(),
+                'items' => $allChannelItems,
+            ];
         }
 
-        // Add virtual steer as a special axle group if any devices have it enabled
-        if (!empty($virtualSteerDevices)) {
-            $virtualSteerAxleGroup = $em->getRepository(AxleGroup::class)->findOneBy(['name' => 'steer']);
-            if ($virtualSteerAxleGroup) {
-                $axleGroupsMap['virtual_steer'] = [
-                    'entity' => $virtualSteerAxleGroup,
-                    'channels' => [],
-                    'is_virtual' => true,
-                    'virtual_devices' => $virtualSteerDevices,
-                ];
-            }
-        }
-
-        $axleGroups = array_values($axleGroupsMap);
+        $axleGroups = $deviceList;
 
         if ($request->isMethod('POST')) {
             return $this->processBulkCalibration($configuration, $request, $em);
@@ -362,7 +357,7 @@ class ConfigurationController extends AbstractController
         $location = $request->request->get('location');
         $notes = $request->request->get('notes');
         $occurredAt = $request->request->get('occurred_at');
-        $weights = $request->request->all('weights'); // Array of axleGroupId => weight
+        $channelWeights = $request->request->all('channel_weights'); // Array of channelId => weight
         $virtualSteerWeight = $request->request->get('virtual_steer_weight'); // Virtual steer weight
 
         // Create calibration session
@@ -393,82 +388,70 @@ class ConfigurationController extends AbstractController
         $calibrationsAdded = 0;
         $errors = [];
 
-        foreach ($weights as $axleGroupId => $weight) {
+        // Process each channel weight individually
+        foreach ($channelWeights as $channelId => $weight) {
             if (empty($weight) || $weight <= 0) {
                 continue;
             }
 
-            // Find the axle group
-            $axleGroup = $em->getRepository(\App\Entity\AxleGroup::class)->find($axleGroupId);
-            if (!$axleGroup) {
+            // Find the channel
+            $channel = $em->getRepository(\App\Entity\DeviceChannel::class)->find($channelId);
+            if (!$channel) {
+                $errors[] = "Channel not found (ID: {$channelId})";
                 continue;
             }
 
-            // Get all channels in this axle group
-            $channels = $axleGroup->getDeviceChannels();
+            $device = $channel->getDevice();
 
-            if ($channels->count() === 0) {
-                $errors[] = "No channels found for " . $axleGroup->getLabel();
+            // Get latest micro data for this device
+            $latestData = $em->getRepository(\App\Entity\MicroData::class)
+                ->createQueryBuilder('m')
+                ->where('m.device = :device')
+                ->setParameter('device', $device)
+                ->orderBy('m.id', 'DESC')
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+
+            if (!$latestData) {
+                $errors[] = "No sensor data available for " . $channel->getDisplayLabel();
                 continue;
             }
 
-            // Get latest sensor data for each channel in this axle group
-            foreach ($channels as $channel) {
-                $device = $channel->getDevice();
+            // Create calibration point
+            $calibration = new \App\Entity\Calibration();
+            $calibration->setDevice($device);
+            $calibration->setDeviceChannel($channel);
+            $calibration->setCreatedBy($this->getUser());
+            $calibration->setCalibrationSession($session);
+            $calibration->setScaleWeight($weight);
 
-                // Get latest micro data for this device
-                $latestData = $em->getRepository(\App\Entity\MicroData::class)
-                    ->createQueryBuilder('m')
-                    ->where('m.device = :device')
-                    ->setParameter('device', $device)
-                    ->orderBy('m.id', 'DESC')
-                    ->setMaxResults(1)
-                    ->getQuery()
-                    ->getOneOrNullResult();
-
-                if (!$latestData) {
-                    $errors[] = "No sensor data available for " . $channel->getDisplayLabel();
-                    continue;
-                }
-
-                // Distribute weight across channels in this axle group
-                $channelWeight = $weight / $channels->count();
-
-                // Create calibration point
-                $calibration = new \App\Entity\Calibration();
-                $calibration->setDevice($device);
-                $calibration->setDeviceChannel($channel);
-                $calibration->setCreatedBy($this->getUser());
-                $calibration->setCalibrationSession($session);
-                $calibration->setScaleWeight($channelWeight);
-
-                // Use channel-specific data if available
-                $channelData = null;
-                if ($latestData->getChannels() && count($latestData->getChannels()) > 0) {
-                    foreach ($latestData->getChannels() as $chData) {
-                        if ($chData['channel_index'] === $channel->getChannelIndex()) {
-                            $channelData = $chData;
-                            break;
-                        }
+            // Use channel-specific data if available
+            $channelData = null;
+            if ($latestData->getChannels() && count($latestData->getChannels()) > 0) {
+                foreach ($latestData->getChannels() as $chData) {
+                    if ($chData['channel_index'] === $channel->getChannelIndex()) {
+                        $channelData = $chData;
+                        break;
                     }
                 }
-
-                if ($channelData) {
-                    $calibration->setAirPressure($channelData['air_pressure'] ?? 0);
-                } else {
-                    // Fallback to main air pressure for channel 1
-                    $calibration->setAirPressure($latestData->getMainAirPressure());
-                }
-
-                $calibration->setAmbientAirPressure($latestData->getAtmosphericPressure());
-                $calibration->setAirTemperature($latestData->getTemperature());
-                $calibration->setElevation($latestData->getElevation());
-                $calibration->setComment("Truck scale: " . ($location ?: 'Unknown location'));
-
-                $em->persist($calibration);
-                $session->addCalibration($calibration);
-                $calibrationsAdded++;
             }
+
+            if ($channelData) {
+                $calibration->setAirPressure($channelData['air_pressure'] ?? 0);
+            } else {
+                // Fallback to main air pressure for channel 1
+                $calibration->setAirPressure($latestData->getMainAirPressure());
+            }
+
+            $calibration->setAmbientAirPressure($latestData->getAtmosphericPressure());
+            $calibration->setAirTemperature($latestData->getTemperature());
+            $calibration->setElevation($latestData->getElevation());
+            $calibration->setComment("Truck scale: " . ($location ?: 'Unknown location'));
+
+            $em->persist($calibration);
+            $session->addCalibration($calibration);
+            $calibrationsAdded++;
         }
 
         if ($calibrationsAdded > 0) {
