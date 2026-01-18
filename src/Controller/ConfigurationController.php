@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\TruckConfiguration;
 use App\Entity\DeviceRole;
 use App\Entity\Device;
+use App\Entity\AxleGroup;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
