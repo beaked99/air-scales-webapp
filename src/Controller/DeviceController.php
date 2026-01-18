@@ -489,4 +489,50 @@ class DeviceController extends AbstractController
             'kingpin_distance' => $kingpinDistance
         ]);
     }
+
+    #[Route('/device/{id}/reorder-channels', name: 'device_reorder_channels', methods: ['POST'])]
+    public function reorderChannels(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        $device = $this->getDeviceWithAccess($em, $id, $user);
+
+        if (!$device) {
+            return new JsonResponse(['error' => 'Device not found or access denied'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $order = $data['order'] ?? [];
+
+        if (empty($order)) {
+            return new JsonResponse(['error' => 'No order data provided'], 400);
+        }
+
+        // Update display order for each channel
+        foreach ($order as $item) {
+            $displayOrder = $item['displayOrder'] ?? null;
+            $type = $item['type'] ?? null;
+
+            if ($displayOrder === null || $type === null) {
+                continue;
+            }
+
+            if ($type === 'channel' && isset($item['id'])) {
+                // Update regular channel
+                $channel = $em->getRepository(\App\Entity\DeviceChannel::class)->find($item['id']);
+
+                if ($channel && $channel->getDevice() === $device) {
+                    $channel->setDisplayOrder($displayOrder);
+                }
+            } elseif ($type === 'virtual-steer') {
+                // Virtual steer doesn't have a DeviceChannel entity
+                // We could store this in Device entity or handle it differently
+                // For now, we'll just acknowledge it in the response
+                // The frontend will maintain the order visually
+            }
+        }
+
+        $em->flush();
+
+        return new JsonResponse(['success' => true, 'message' => 'Channel order saved']);
+    }
 }

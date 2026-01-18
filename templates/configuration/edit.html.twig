@@ -133,13 +133,25 @@
               </div>
 
               <!-- Channel List -->
-              <div class="mt-3 space-y-1">
-                {# Virtual Steer Channel (Channel 0) #}
+              <div class="mt-3 space-y-1" id="channel-list-{{ device.id }}">
+                {# Virtual Steer Channel (Channel 0) - Special handling, not draggable #}
                 {% if device.hasVirtualSteer %}
-                  <div class="flex items-center justify-between py-2 px-2 bg-purple-900/20 border border-purple-700/30 rounded">
-                    <span class="text-sm text-purple-300">
-                      <i class="fas fa-calculator mr-1"></i>Channel 0 - Virtual Steer
-                    </span>
+                  <div class="flex items-center justify-between py-2 px-2 bg-purple-900/20 border border-purple-700/30 rounded cursor-move hover:border-purple-500 transition-colors"
+                       draggable="true"
+                       data-channel-type="virtual-steer"
+                       data-device-id="{{ device.id }}"
+                       ondragstart="handleChannelDragStart(event)"
+                       ondragover="handleChannelDragOver(event)"
+                       ondrop="handleChannelDrop(event)"
+                       ondragend="handleChannelDragEnd(event)">
+                    <div class="flex items-center gap-2">
+                      <div class="text-purple-500 cursor-grab active:cursor-grabbing">
+                        <i class="fas fa-grip-vertical text-xs"></i>
+                      </div>
+                      <span class="text-sm text-purple-300">
+                        <i class="fas fa-calculator mr-1"></i>Channel 0 - Virtual Steer
+                      </span>
+                    </div>
                     <span class="text-xs text-purple-400">
                       {% if device.virtualSteerIntercept %}
                         Trained
@@ -151,15 +163,27 @@
                 {% endif %}
 
                 {# Regular Channels #}
-                {% for channel in device.deviceChannels|sort((a, b) => a.channelIndex <=> b.channelIndex) %}
+                {% for channel in device.deviceChannels %}
                   {% if channel.enabled %}
-                    <div class="flex items-center justify-between py-2 px-2 bg-gray-700/50 border border-gray-600/30 rounded">
-                      <span class="text-sm text-gray-300">
-                        Channel {{ channel.channelIndex }}
-                        {% if channel.axleGroup %}
-                          - {{ channel.axleGroup.label }}
-                        {% endif %}
-                      </span>
+                    <div class="flex items-center justify-between py-2 px-2 bg-gray-700/50 border border-gray-600/30 rounded cursor-move hover:border-sky-500 transition-colors"
+                         draggable="true"
+                         data-channel-id="{{ channel.id }}"
+                         data-device-id="{{ device.id }}"
+                         ondragstart="handleChannelDragStart(event)"
+                         ondragover="handleChannelDragOver(event)"
+                         ondrop="handleChannelDrop(event)"
+                         ondragend="handleChannelDragEnd(event)">
+                      <div class="flex items-center gap-2">
+                        <div class="text-gray-500 cursor-grab active:cursor-grabbing">
+                          <i class="fas fa-grip-vertical text-xs"></i>
+                        </div>
+                        <span class="text-sm text-gray-300">
+                          Channel {{ channel.channelIndex }}
+                          {% if channel.axleGroup %}
+                            - {{ channel.axleGroup.label }}
+                          {% endif %}
+                        </span>
+                      </div>
                       <span class="text-xs text-gray-400">
                         {% if channel.regressionIntercept %}
                           Calibrated
@@ -534,6 +558,119 @@ function saveDeviceOrder() {
   .catch(err => {
     console.error('Error saving order:', err);
     alert('Failed to save new order. Please refresh the page.');
+  });
+}
+
+// Channel Drag and Drop functionality
+let draggedChannelElement = null;
+
+function handleChannelDragStart(event) {
+  draggedChannelElement = event.currentTarget;
+  event.currentTarget.style.opacity = '0.4';
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+function handleChannelDragOver(event) {
+  if (event.preventDefault) {
+    event.preventDefault();
+  }
+  event.dataTransfer.dropEffect = 'move';
+
+  const draggedOver = event.currentTarget;
+  if (draggedChannelElement !== draggedOver) {
+    draggedOver.style.borderColor = '#0ea5e9'; // sky-500
+  }
+
+  return false;
+}
+
+function handleChannelDrop(event) {
+  if (event.stopPropagation) {
+    event.stopPropagation();
+  }
+
+  const dropTarget = event.currentTarget;
+
+  if (draggedChannelElement !== dropTarget) {
+    // Get the device ID to know which channel list we're working with
+    const deviceId = dropTarget.getAttribute('data-device-id');
+    const container = document.getElementById(`channel-list-${deviceId}`);
+    const allChannels = Array.from(container.children);
+
+    // Find indices
+    const draggedIndex = allChannels.indexOf(draggedChannelElement);
+    const targetIndex = allChannels.indexOf(dropTarget);
+
+    // Reorder in DOM
+    if (draggedIndex < targetIndex) {
+      dropTarget.parentNode.insertBefore(draggedChannelElement, dropTarget.nextSibling);
+    } else {
+      dropTarget.parentNode.insertBefore(draggedChannelElement, dropTarget);
+    }
+
+    // Save new order to database
+    saveChannelOrder(deviceId);
+  }
+
+  return false;
+}
+
+function handleChannelDragEnd(event) {
+  event.currentTarget.style.opacity = '1';
+
+  // Reset all border colors for channels in this device
+  const deviceId = event.currentTarget.getAttribute('data-device-id');
+  const container = document.getElementById(`channel-list-${deviceId}`);
+  const allChannels = container.querySelectorAll('[draggable="true"]');
+
+  allChannels.forEach(channel => {
+    if (channel.getAttribute('data-channel-type') === 'virtual-steer') {
+      channel.style.borderColor = 'rgb(126 34 206 / 0.3)'; // purple-700/30
+    } else {
+      channel.style.borderColor = 'rgb(75 85 99 / 0.3)'; // gray-600/30
+    }
+  });
+}
+
+function saveChannelOrder(deviceId) {
+  const container = document.getElementById(`channel-list-${deviceId}`);
+  const channels = container.children;
+  const order = [];
+
+  for (let i = 0; i < channels.length; i++) {
+    const channelId = channels[i].getAttribute('data-channel-id');
+    const channelType = channels[i].getAttribute('data-channel-type');
+
+    if (channelType === 'virtual-steer') {
+      // Virtual steer doesn't have a channel ID, handle separately
+      order.push({
+        type: 'virtual-steer',
+        displayOrder: i
+      });
+    } else if (channelId) {
+      order.push({
+        type: 'channel',
+        id: parseInt(channelId),
+        displayOrder: i
+      });
+    }
+  }
+
+  fetch(`/device/${deviceId}/reorder-channels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order: order })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (!data.success) {
+      console.error('Failed to save channel order:', data.error);
+      alert('Failed to save new channel order. Please refresh the page.');
+    }
+  })
+  .catch(err => {
+    console.error('Error saving channel order:', err);
+    alert('Failed to save new channel order. Please refresh the page.');
   });
 }
 </script>
