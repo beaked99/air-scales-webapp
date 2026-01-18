@@ -131,21 +131,10 @@ class ConfigurationController extends AbstractController
         $devices = $this->getUserDevices($em, $user);
         $axleGroups = $em->getRepository(AxleGroup::class)->findAll();
 
-        // Sort device roles - virtual steer devices first
-        $deviceRoles = $configuration->getDeviceRoles()->toArray();
-        usort($deviceRoles, function($a, $b) {
-            $aHasVirtual = $a->getDevice() && $a->getDevice()->hasVirtualSteer();
-            $bHasVirtual = $b->getDevice() && $b->getDevice()->hasVirtualSteer();
-            // Return negative if a should come before b (a has virtual, b doesn't)
-            // Return positive if b should come before a (b has virtual, a doesn't)
-            return ($aHasVirtual ? 0 : 1) - ($bHasVirtual ? 0 : 1);
-        });
-
         return $this->render('configuration/edit.html.twig', [
             'configuration' => $configuration,
             'devices' => $devices,
             'axleGroups' => $axleGroups,
-            'sortedDeviceRoles' => $deviceRoles,
         ]);
     }
 
@@ -612,5 +601,41 @@ class ConfigurationController extends AbstractController
         }
 
         return $items;
+    }
+
+    #[Route('/{id}/reorder-devices', name: 'configuration_reorder_devices', methods: ['POST'])]
+    public function reorderDevices(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        $configuration = $em->getRepository(TruckConfiguration::class)->find($id);
+
+        if (!$configuration || $configuration->getOwner() !== $user) {
+            return new JsonResponse(['error' => 'Configuration not found or access denied'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $order = $data['order'] ?? [];
+
+        if (empty($order)) {
+            return new JsonResponse(['error' => 'No order data provided'], 400);
+        }
+
+        // Update sort order for each device role
+        foreach ($order as $item) {
+            $deviceRoleId = $item['id'] ?? null;
+            $sortOrder = $item['sortOrder'] ?? null;
+
+            if ($deviceRoleId !== null && $sortOrder !== null) {
+                $deviceRole = $em->getRepository(DeviceRole::class)->find($deviceRoleId);
+
+                if ($deviceRole && $deviceRole->getTruckConfiguration() === $configuration) {
+                    $deviceRole->setSortOrder($sortOrder);
+                }
+            }
+        }
+
+        $em->flush();
+
+        return new JsonResponse(['success' => true, 'message' => 'Device order saved']);
     }
 }

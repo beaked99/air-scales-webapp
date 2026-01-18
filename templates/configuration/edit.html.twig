@@ -102,20 +102,25 @@
           No devices assigned yet
         </div>
       {% else %}
-        <div class="space-y-2">
-          {# Debug: Show count #}
-          <!-- Total devices: {{ sortedDeviceRoles|length }} -->
-          {% for deviceRole in sortedDeviceRoles %}
+        <div class="space-y-2" id="device-list">
+          {% for deviceRole in configuration.deviceRoles %}
             {% set device = deviceRole.device %}
-            <!-- Device: {{ device.serialNumber ?: device.id }}, HasVirtual: {{ device.hasVirtualSteer ? 'YES' : 'NO' }} -->
-            <div class="p-3 {% if device.hasVirtualSteer %}bg-purple-900/10 border-purple-600{% else %}bg-gray-750 border-gray-600{% endif %} border rounded-lg">
+            <div class="p-3 {% if device.hasVirtualSteer %}bg-purple-900/10 border-purple-600{% else %}bg-gray-750 border-gray-600{% endif %} border rounded-lg cursor-move hover:border-sky-500 transition-colors"
+                 draggable="true"
+                 data-device-role-id="{{ deviceRole.id }}"
+                 ondragstart="handleDragStart(event)"
+                 ondragover="handleDragOver(event)"
+                 ondrop="handleDrop(event)"
+                 ondragend="handleDragEnd(event)">
               <div class="flex items-center justify-between mb-2">
-                <div>
-                  <div class="font-medium">{{ device.serialNumber ?: 'AS25-' ~ device.id }}</div>
-                  <div class="text-xs text-gray-400">{{ deviceRole.role }}</div>
-                  {% if device.hasVirtualSteer %}
-                    <div class="text-xs text-purple-400 mt-1"><i class="fas fa-calculator mr-1"></i>Virtual Steer Enabled</div>
-                  {% endif %}
+                <div class="flex items-center gap-3">
+                  <div class="text-gray-500 cursor-grab active:cursor-grabbing">
+                    <i class="fas fa-grip-vertical"></i>
+                  </div>
+                  <div>
+                    <div class="font-medium">{{ device.serialNumber ?: 'AS25-' ~ device.id }}</div>
+                    <div class="text-xs text-gray-400">{{ deviceRole.role }}</div>
+                  </div>
                 </div>
                 <div class="flex gap-2">
                   <button onclick="toggleDeviceSettings({{ device.id }})" class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-500 rounded">
@@ -125,6 +130,46 @@
                     Remove
                   </button>
                 </div>
+              </div>
+
+              <!-- Channel List -->
+              <div class="mt-3 space-y-1">
+                {# Virtual Steer Channel (Channel 0) #}
+                {% if device.hasVirtualSteer %}
+                  <div class="flex items-center justify-between py-2 px-2 bg-purple-900/20 border border-purple-700/30 rounded">
+                    <span class="text-sm text-purple-300">
+                      <i class="fas fa-calculator mr-1"></i>Channel 0 - Virtual Steer
+                    </span>
+                    <span class="text-xs text-purple-400">
+                      {% if device.virtualSteerIntercept %}
+                        Trained
+                      {% else %}
+                        Needs calibration
+                      {% endif %}
+                    </span>
+                  </div>
+                {% endif %}
+
+                {# Regular Channels #}
+                {% for channel in device.deviceChannels|sort((a, b) => a.channelIndex <=> b.channelIndex) %}
+                  {% if channel.enabled %}
+                    <div class="flex items-center justify-between py-2 px-2 bg-gray-700/50 border border-gray-600/30 rounded">
+                      <span class="text-sm text-gray-300">
+                        Channel {{ channel.channelIndex }}
+                        {% if channel.axleGroup %}
+                          - {{ channel.axleGroup.label }}
+                        {% endif %}
+                      </span>
+                      <span class="text-xs text-gray-400">
+                        {% if channel.regressionIntercept %}
+                          Calibrated
+                        {% else %}
+                          Needs calibration
+                        {% endif %}
+                      </span>
+                    </div>
+                  {% endif %}
+                {% endfor %}
               </div>
 
               <!-- Device Settings Panel (collapsed by default) -->
@@ -392,6 +437,104 @@ function removeDevice(deviceRoleId) {
       console.error(err);
     });
   }
+}
+
+// Drag and Drop functionality
+let draggedElement = null;
+
+function handleDragStart(event) {
+  draggedElement = event.currentTarget;
+  event.currentTarget.style.opacity = '0.4';
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(event) {
+  if (event.preventDefault) {
+    event.preventDefault();
+  }
+  event.dataTransfer.dropEffect = 'move';
+
+  const draggedOver = event.currentTarget;
+  if (draggedElement !== draggedOver) {
+    draggedOver.style.borderColor = '#0ea5e9'; // sky-500
+  }
+
+  return false;
+}
+
+function handleDrop(event) {
+  if (event.stopPropagation) {
+    event.stopPropagation();
+  }
+
+  const dropTarget = event.currentTarget;
+
+  if (draggedElement !== dropTarget) {
+    // Get the parent container
+    const container = document.getElementById('device-list');
+    const allCards = Array.from(container.children);
+
+    // Find indices
+    const draggedIndex = allCards.indexOf(draggedElement);
+    const targetIndex = allCards.indexOf(dropTarget);
+
+    // Reorder in DOM
+    if (draggedIndex < targetIndex) {
+      dropTarget.parentNode.insertBefore(draggedElement, dropTarget.nextSibling);
+    } else {
+      dropTarget.parentNode.insertBefore(draggedElement, dropTarget);
+    }
+
+    // Save new order to database
+    saveDeviceOrder();
+  }
+
+  return false;
+}
+
+function handleDragEnd(event) {
+  event.currentTarget.style.opacity = '1';
+
+  // Reset all border colors
+  const allCards = document.querySelectorAll('#device-list > div');
+  allCards.forEach(card => {
+    if (card.classList.contains('border-purple-600')) {
+      card.style.borderColor = 'rgb(126 34 206)'; // purple-600
+    } else {
+      card.style.borderColor = 'rgb(75 85 99)'; // gray-600
+    }
+  });
+}
+
+function saveDeviceOrder() {
+  const container = document.getElementById('device-list');
+  const cards = container.children;
+  const order = [];
+
+  for (let i = 0; i < cards.length; i++) {
+    const deviceRoleId = cards[i].getAttribute('data-device-role-id');
+    order.push({
+      id: parseInt(deviceRoleId),
+      sortOrder: i
+    });
+  }
+
+  fetch('/configuration/{{ configuration.id }}/reorder-devices', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order: order })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (!data.success) {
+      console.error('Failed to save order:', data.error);
+      alert('Failed to save new order. Please refresh the page.');
+    }
+  })
+  .catch(err => {
+    console.error('Error saving order:', err);
+    alert('Failed to save new order. Please refresh the page.');
+  });
 }
 </script>
 {% endblock %}

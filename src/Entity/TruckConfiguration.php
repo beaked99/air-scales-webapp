@@ -26,6 +26,7 @@ class TruckConfiguration
     private ?User $owner = null;
 
     #[ORM\OneToMany(mappedBy: 'truckConfiguration', targetEntity: DeviceRole::class, cascade: ['persist', 'remove'])]
+    #[ORM\OrderBy(['sortOrder' => 'ASC', 'id' => 'ASC'])]
     private Collection $deviceRoles;
 
     #[ORM\Column(type: 'json', nullable: true)]
