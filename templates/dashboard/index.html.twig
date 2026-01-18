@@ -89,25 +89,51 @@
                       {% endif %}
                     </div>
 
-                    <!-- Virtual Steer Channel (if enabled) -->
+                    <!-- Build combined sorted array of channels + virtual steer -->
+                    {% set allChannelItems = [] %}
+
+                    {# Add virtual steer if enabled #}
                     {% if device.hasVirtualSteer %}
-                      <div class="flex items-center justify-between py-1 text-sm">
-                        <span class="text-purple-400">
-                          <i class="fas fa-calculator mr-1"></i>Virtual Steer
-                        </span>
-                        <span class="font-semibold text-purple-300">
-                          {% if device.virtualSteerWeight is defined and device.virtualSteerWeight > 0 %}
-                            {{ device.virtualSteerWeight|number_format(0) }} lbs
-                          {% else %}
-                            <span class="text-xs text-gray-500">Need calibration data</span>
-                          {% endif %}
-                        </span>
-                      </div>
+                      {% set allChannelItems = allChannelItems|merge([{
+                        'type': 'virtual-steer',
+                        'order': device.virtualSteerDisplayOrder ?? 0,
+                        'device': device
+                      }]) %}
                     {% endif %}
 
-                    <!-- Device Channels -->
-                    {% for channel in device.deviceChannels|sort((a, b) => a.channelIndex <=> b.channelIndex) %}
+                    {# Add regular channels #}
+                    {% for channel in device.deviceChannels %}
                       {% if channel.enabled %}
+                        {% set allChannelItems = allChannelItems|merge([{
+                          'type': 'channel',
+                          'order': channel.displayOrder ?? (channel.channelIndex + 100),
+                          'channel': channel
+                        }]) %}
+                      {% endif %}
+                    {% endfor %}
+
+                    {# Sort by order #}
+                    {% set allChannelItems = allChannelItems|sort((a, b) => a.order <=> b.order) %}
+
+                    {# Display sorted channels #}
+                    {% for item in allChannelItems %}
+                      {% if item.type == 'virtual-steer' %}
+                        {# Virtual Steer #}
+                        <div class="flex items-center justify-between py-1 text-sm">
+                          <span class="text-purple-400">
+                            <i class="fas fa-calculator mr-1"></i>Virtual Steer
+                          </span>
+                          <span class="font-semibold text-purple-300">
+                            {% if item.device.virtualSteerWeight is defined and item.device.virtualSteerWeight > 0 %}
+                              {{ item.device.virtualSteerWeight|number_format(0) }} lbs
+                            {% else %}
+                              <span class="text-xs text-gray-500">Need calibration data</span>
+                            {% endif %}
+                          </span>
+                        </div>
+                      {% else %}
+                        {# Regular Channel #}
+                        {% set channel = item.channel %}
                         <div class="flex items-center justify-between py-1 text-sm">
                           <span class="text-gray-300">Channel {{ channel.channelIndex }}</span>
                           <span class="font-semibold text-white">

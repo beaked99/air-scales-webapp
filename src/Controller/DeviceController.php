@@ -524,10 +524,8 @@ class DeviceController extends AbstractController
                     $channel->setDisplayOrder($displayOrder);
                 }
             } elseif ($type === 'virtual-steer') {
-                // Virtual steer doesn't have a DeviceChannel entity
-                // We could store this in Device entity or handle it differently
-                // For now, we'll just acknowledge it in the response
-                // The frontend will maintain the order visually
+                // Save virtual steer display order on the device
+                $device->setVirtualSteerDisplayOrder($displayOrder);
             }
         }
 

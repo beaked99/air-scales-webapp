@@ -133,6 +133,9 @@ class Device
     #[ORM\Column(type: 'float', nullable: true)]
     private ?float $virtualSteerCoeff = null; // learned coefficient for drive weight effect
 
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $virtualSteerDisplayOrder = null; // display order position for virtual steer in channel list
+
     public function __construct()
     {
         $this->calibrations = new ArrayCollection();
@@ -293,6 +296,9 @@ class Device
 
     public function getVirtualSteerCoeff(): ?float { return $this->virtualSteerCoeff; }
     public function setVirtualSteerCoeff(?float $virtualSteerCoeff): self { $this->virtualSteerCoeff = $virtualSteerCoeff; return $this; }
+
+    public function getVirtualSteerDisplayOrder(): ?int { return $this->virtualSteerDisplayOrder; }
+    public function setVirtualSteerDisplayOrder(?int $virtualSteerDisplayOrder): self { $this->virtualSteerDisplayOrder = $virtualSteerDisplayOrder; return $this; }
 
     // Mesh helper methods
     public function isMeshMaster(): bool { return $this->currentRole === 'master'; }

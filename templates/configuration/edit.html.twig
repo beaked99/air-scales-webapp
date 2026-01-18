@@ -134,37 +134,63 @@
 
               <!-- Channel List -->
               <div class="mt-3 space-y-1" id="channel-list-{{ device.id }}">
-                {# Virtual Steer Channel (Channel 0) - Special handling, not draggable #}
+                {# Build combined sorted array of channels + virtual steer #}
+                {% set allChannelItems = [] %}
+
+                {# Add virtual steer if enabled #}
                 {% if device.hasVirtualSteer %}
-                  <div class="flex items-center justify-between py-2 px-2 bg-purple-900/20 border border-purple-700/30 rounded cursor-move hover:border-purple-500 transition-colors"
-                       draggable="true"
-                       data-channel-type="virtual-steer"
-                       data-device-id="{{ device.id }}"
-                       ondragstart="handleChannelDragStart(event)"
-                       ondragover="handleChannelDragOver(event)"
-                       ondrop="handleChannelDrop(event)"
-                       ondragend="handleChannelDragEnd(event)">
-                    <div class="flex items-center gap-2">
-                      <div class="text-purple-500 cursor-grab active:cursor-grabbing">
-                        <i class="fas fa-grip-vertical text-xs"></i>
-                      </div>
-                      <span class="text-sm text-purple-300">
-                        <i class="fas fa-calculator mr-1"></i>Channel 0 - Virtual Steer
-                      </span>
-                    </div>
-                    <span class="text-xs text-purple-400">
-                      {% if device.virtualSteerIntercept %}
-                        Trained
-                      {% else %}
-                        Needs calibration
-                      {% endif %}
-                    </span>
-                  </div>
+                  {% set allChannelItems = allChannelItems|merge([{
+                    'type': 'virtual-steer',
+                    'order': device.virtualSteerDisplayOrder ?? 0,
+                    'device': device
+                  }]) %}
                 {% endif %}
 
-                {# Regular Channels #}
+                {# Add regular channels #}
                 {% for channel in device.deviceChannels %}
                   {% if channel.enabled %}
+                    {% set allChannelItems = allChannelItems|merge([{
+                      'type': 'channel',
+                      'order': channel.displayOrder ?? (channel.channelIndex + 100),
+                      'channel': channel
+                    }]) %}
+                  {% endif %}
+                {% endfor %}
+
+                {# Sort by order #}
+                {% set allChannelItems = allChannelItems|sort((a, b) => a.order <=> b.order) %}
+
+                {# Display sorted channels #}
+                {% for item in allChannelItems %}
+                  {% if item.type == 'virtual-steer' %}
+                    {# Virtual Steer #}
+                    <div class="flex items-center justify-between py-2 px-2 bg-purple-900/20 border border-purple-700/30 rounded cursor-move hover:border-purple-500 transition-colors"
+                         draggable="true"
+                         data-channel-type="virtual-steer"
+                         data-device-id="{{ item.device.id }}"
+                         ondragstart="handleChannelDragStart(event)"
+                         ondragover="handleChannelDragOver(event)"
+                         ondrop="handleChannelDrop(event)"
+                         ondragend="handleChannelDragEnd(event)">
+                      <div class="flex items-center gap-2">
+                        <div class="text-purple-500 cursor-grab active:cursor-grabbing">
+                          <i class="fas fa-grip-vertical text-xs"></i>
+                        </div>
+                        <span class="text-sm text-purple-300">
+                          <i class="fas fa-calculator mr-1"></i>Channel 0 - Virtual Steer
+                        </span>
+                      </div>
+                      <span class="text-xs text-purple-400">
+                        {% if item.device.virtualSteerIntercept %}
+                          Trained
+                        {% else %}
+                          Needs calibration
+                        {% endif %}
+                      </span>
+                    </div>
+                  {% else %}
+                    {# Regular Channel #}
+                    {% set channel = item.channel %}
                     <div class="flex items-center justify-between py-2 px-2 bg-gray-700/50 border border-gray-600/30 rounded cursor-move hover:border-sky-500 transition-colors"
                          draggable="true"
                          data-channel-id="{{ channel.id }}"
