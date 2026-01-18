@@ -103,8 +103,11 @@
         </div>
       {% else %}
         <div class="space-y-2">
+          {# Debug: Show count #}
+          <!-- Total devices: {{ sortedDeviceRoles|length }} -->
           {% for deviceRole in sortedDeviceRoles %}
             {% set device = deviceRole.device %}
+            <!-- Device: {{ device.serialNumber ?: device.id }}, HasVirtual: {{ device.hasVirtualSteer ? 'YES' : 'NO' }} -->
             <div class="p-3 {% if device.hasVirtualSteer %}bg-purple-900/10 border-purple-600{% else %}bg-gray-750 border-gray-600{% endif %} border rounded-lg">
               <div class="flex items-center justify-between mb-2">
                 <div>
