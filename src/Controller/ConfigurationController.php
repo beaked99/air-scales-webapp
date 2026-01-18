@@ -298,11 +298,18 @@ class ConfigurationController extends AbstractController
 
         // Build axle groups from device roles
         $axleGroupsMap = [];
+        $virtualSteerDevices = [];
+
         foreach ($configuration->getDeviceRoles() as $deviceRole) {
             $device = $deviceRole->getDevice();
             $roleName = $deviceRole->getRole();
 
             if (!$device) continue;
+
+            // Track devices with virtual steer enabled
+            if ($device->hasVirtualSteer()) {
+                $virtualSteerDevices[] = $device;
+            }
 
             // Get or create entry for this role
             if (!isset($axleGroupsMap[$roleName])) {
@@ -321,6 +328,19 @@ class ConfigurationController extends AbstractController
                 if ($channel->isEnabled()) {
                     $axleGroupsMap[$roleName]['channels'][] = $channel;
                 }
+            }
+        }
+
+        // Add virtual steer as a special axle group if any devices have it enabled
+        if (!empty($virtualSteerDevices)) {
+            $virtualSteerAxleGroup = $em->getRepository(AxleGroup::class)->findOneBy(['name' => 'steer']);
+            if ($virtualSteerAxleGroup) {
+                $axleGroupsMap['virtual_steer'] = [
+                    'entity' => $virtualSteerAxleGroup,
+                    'channels' => [],
+                    'is_virtual' => true,
+                    'virtual_devices' => $virtualSteerDevices,
+                ];
             }
         }
 
@@ -343,6 +363,7 @@ class ConfigurationController extends AbstractController
         $notes = $request->request->get('notes');
         $occurredAt = $request->request->get('occurred_at');
         $weights = $request->request->all('weights'); // Array of axleGroupId => weight
+        $virtualSteerWeight = $request->request->get('virtual_steer_weight'); // Virtual steer weight
 
         // Create calibration session
         $session = new \App\Entity\CalibrationSession();
@@ -351,7 +372,13 @@ class ConfigurationController extends AbstractController
         $session->setSource('TRUCK_SCALE');
         $session->setTicketNumber($ticketNumber);
         $session->setLocation($location);
-        $session->setNotes($notes);
+
+        // Store virtual steer weight in notes if provided
+        $sessionNotes = $notes ?: '';
+        if (!empty($virtualSteerWeight) && $virtualSteerWeight > 0) {
+            $sessionNotes .= ($sessionNotes ? "\n" : '') . "[VIRTUAL_STEER_WEIGHT:{$virtualSteerWeight}]";
+        }
+        $session->setNotes($sessionNotes);
 
         if ($occurredAt) {
             try {
@@ -449,10 +476,17 @@ class ConfigurationController extends AbstractController
 
             // Run regression for affected devices
             $regressor = new \App\Service\DeviceCalibrationRegressor($em);
+            $virtualSteerCalculator = new \App\Service\VirtualSteerCalculator($em);
+
             foreach ($configuration->getDeviceRoles() as $deviceRole) {
                 $device = $deviceRole->getDevice();
                 if ($device) {
                     $regressor->run($device);
+
+                    // Train virtual steer regression if enabled
+                    if ($device->hasVirtualSteer()) {
+                        $virtualSteerCalculator->learnFromCalibrations($device);
+                    }
                 }
             }
 

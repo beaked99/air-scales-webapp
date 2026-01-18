@@ -48,45 +48,66 @@ class VirtualSteerCalculator
             return false;
         }
 
-        // Get all calibrations for this device that have both steer and drive weights
+        // Get all calibrations for this device
         $calibrations = $this->em->getRepository(Calibration::class)
             ->createQueryBuilder('c')
+            ->leftJoin('c.calibrationSession', 's')
+            ->addSelect('s')
             ->where('c.device = :device')
             ->setParameter('device', $device)
             ->orderBy('c.occurredAt', 'DESC')
             ->getQuery()
             ->getResult();
 
-        // Group calibrations by session (using ticket number or datetime)
+        // Group calibrations by session
         $sessions = [];
         foreach ($calibrations as $calibration) {
-            $key = $calibration->getTicketNumber() ?: $calibration->getOccurredAt()->format('Y-m-d H:i');
-            if (!isset($sessions[$key])) {
-                $sessions[$key] = ['steer' => 0, 'drive' => 0];
+            $session = $calibration->getCalibrationSession();
+            $sessionKey = $session ? $session->getId() : ($calibration->getTicketNumber() ?: $calibration->getOccurredAt()->format('Y-m-d H:i'));
+
+            if (!isset($sessions[$sessionKey])) {
+                $sessions[$sessionKey] = [
+                    'steer' => 0,
+                    'drive' => 0,
+                    'session' => $session,
+                ];
             }
 
             $channel = $calibration->getDeviceChannel();
-            if (!$channel) continue;
+            if ($channel) {
+                $axleGroup = $channel->getAxleGroup();
+                if ($axleGroup) {
+                    $weight = $calibration->getKnownWeight();
 
-            $axleGroup = $channel->getAxleGroup();
-            if (!$axleGroup) continue;
+                    if ($axleGroup->getName() === 'steer') {
+                        $sessions[$sessionKey]['steer'] += $weight;
+                    } elseif ($axleGroup->getName() === 'drive') {
+                        $sessions[$sessionKey]['drive'] += $weight;
+                    }
+                }
+            } else {
+                // No channel - this is a drive axle calibration, accumulate drive weight
+                $sessions[$sessionKey]['drive'] += $calibration->getKnownWeight() ?: 0;
+            }
+        }
 
-            $weight = $calibration->getKnownWeight();
-
-            if ($axleGroup->getName() === 'steer') {
-                $sessions[$key]['steer'] += $weight;
-            } elseif ($axleGroup->getName() === 'drive') {
-                $sessions[$key]['drive'] += $weight;
+        // Extract virtual steer weights from session notes
+        foreach ($sessions as $sessionKey => &$sessionData) {
+            if ($sessionData['session']) {
+                $notes = $sessionData['session']->getNotes();
+                if ($notes && preg_match('/\[VIRTUAL_STEER_WEIGHT:(\d+(?:\.\d+)?)\]/', $notes, $matches)) {
+                    $sessionData['steer'] = (float)$matches[1];
+                }
             }
         }
 
         // Build data points from complete sessions
         $dataPoints = [];
-        foreach ($sessions as $session) {
-            if ($session['steer'] > 0 && $session['drive'] > 0) {
+        foreach ($sessions as $sessionData) {
+            if ($sessionData['steer'] > 0 && $sessionData['drive'] > 0) {
                 $dataPoints[] = [
-                    'drive' => $session['drive'],
-                    'steer' => $session['steer'],
+                    'drive' => $sessionData['drive'],
+                    'steer' => $sessionData['steer'],
                 ];
             }
         }
