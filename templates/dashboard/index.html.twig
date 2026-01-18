@@ -89,6 +89,22 @@
                       {% endif %}
                     </div>
 
+                    <!-- Virtual Steer Channel (if enabled) -->
+                    {% if device.hasVirtualSteer and device.virtualSteerWeight is defined %}
+                      <div class="flex items-center justify-between py-1 text-sm">
+                        <span class="text-purple-400">
+                          <i class="fas fa-calculator mr-1"></i>Virtual Steer
+                        </span>
+                        <span class="font-semibold text-purple-300">
+                          {% if device.virtualSteerWeight > 0 %}
+                            {{ device.virtualSteerWeight|number_format(0) }} lbs
+                          {% else %}
+                            -- lbs
+                          {% endif %}
+                        </span>
+                      </div>
+                    {% endif %}
+
                     <!-- Device Channels -->
                     {% for channel in device.deviceChannels|sort((a, b) => a.channelIndex <=> b.channelIndex) %}
                       {% if channel.enabled %}

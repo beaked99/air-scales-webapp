@@ -6,6 +6,7 @@ use App\Entity\Device;
 use App\Entity\DeviceAccess;
 use App\Entity\MicroData;
 use App\Entity\User;
+use App\Service\VirtualSteerCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,7 +16,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 class DashboardController extends AbstractController
 {
     #[Route('/dashboard', name: 'app_dashboard')]
-    public function index(EntityManagerInterface $em): Response
+    public function index(EntityManagerInterface $em, VirtualSteerCalculator $virtualSteerCalculator): Response
     {
         $user = $this->getUser();
 
@@ -49,6 +50,7 @@ class DashboardController extends AbstractController
                     ->getOneOrNullResult();
 
                 // Calculate weight for each enabled channel
+                $deviceTotalWeight = 0;
                 foreach ($device->getDeviceChannels() as $channel) {
                     if (!$channel->isEnabled()) continue;
 
@@ -73,7 +75,17 @@ class DashboardController extends AbstractController
 
                     // Store calculated weight on the channel object for template access
                     $channel->calculatedWeight = $weight;
+                    $deviceTotalWeight += $weight;
                     $totalWeight += $weight;
+                }
+
+                // Calculate virtual steer weight if enabled for this device
+                if ($device->hasVirtualSteer() && $deviceTotalWeight > 0) {
+                    $virtualSteerWeight = $virtualSteerCalculator->calculateSteerWeight($device, $deviceTotalWeight);
+                    if ($virtualSteerWeight !== null) {
+                        $device->virtualSteerWeight = $virtualSteerWeight;
+                        $totalWeight += $virtualSteerWeight;
+                    }
                 }
 
                 // Store connection status on device for template access
