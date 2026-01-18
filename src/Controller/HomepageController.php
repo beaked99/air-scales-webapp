@@ -13,9 +13,9 @@ final class HomepageController extends AbstractController
     #[Route('/', name: 'app_homepage')]
     public function index(): Response
     {
-        // Redirect logged-in users to their fleet dashboard
+        // Redirect logged-in users to their main dashboard
         if ($this->getUser()) {
-            return $this->redirectToRoute('configuration_index');
+            return $this->redirectToRoute('app_dashboard');
         }
 
         // Show marketing homepage for non-authenticated users

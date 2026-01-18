@@ -37,6 +37,9 @@ class TruckConfiguration
     #[ORM\Column(type: 'boolean')]
     private bool $isActive = false;
 
+    #[ORM\Column(type: 'boolean')]
+    private bool $isShared = false;
+
     public function __construct()
     {
         $this->deviceRoles = new ArrayCollection();
@@ -55,6 +58,8 @@ class TruckConfiguration
     public function setLastUsed(?\DateTimeInterface $lastUsed): self { $this->lastUsed = $lastUsed; return $this; }
     public function isActive(): bool { return $this->isActive; }
     public function setIsActive(bool $isActive): self { $this->isActive = $isActive; return $this; }
+    public function isShared(): bool { return $this->isShared; }
+    public function setIsShared(bool $isShared): self { $this->isShared = $isShared; return $this; }
 
     /**
      * Get all axle groups from all device roles in this configuration

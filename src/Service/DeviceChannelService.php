@@ -45,11 +45,11 @@ class DeviceChannelService
         $this->em->persist($channel1);
         $device->addDeviceChannel($channel1);
 
-        // Create Channel 2
+        // Create Channel 2 (disabled by default - user must enable dual channel mode)
         $channel2 = new DeviceChannel();
         $channel2->setDevice($device);
         $channel2->setChannelIndex(2);
-        $channel2->setEnabled(true);
+        $channel2->setEnabled(false); // Disabled by default
         $channel2->setLabelOverride('Channel 2'); // Default label
 
         $this->em->persist($channel2);

@@ -18,21 +18,118 @@ class DashboardController extends AbstractController
     public function index(EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        
-        // Get user's devices with latest data
-        $userDevices = $this->getUserDevicesWithData($em, $user);
-        
-        // Calculate totals
-        $totalWeight = $this->calculateTotalWeight($userDevices);
+
+        // Get active truck configuration
+        $activeConfiguration = $em->getRepository(\App\Entity\TruckConfiguration::class)
+            ->createQueryBuilder('tc')
+            ->where('tc.owner = :user')
+            ->andWhere('tc.isActive = :true')
+            ->setParameter('user', $user)
+            ->setParameter('true', true)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        // Get axle groups with live weights if configuration exists
+        $axleGroups = [];
+        $totalWeight = 0;
+        $bluetoothStatus = null;
+
+        if ($activeConfiguration) {
+            foreach ($activeConfiguration->getAxleGroups() as $axleGroup) {
+                $weight = 0;
+                $channelCount = $axleGroup->getDeviceChannels()->count();
+                $calibratedChannels = 0;
+
+                // Calculate total weight for this axle group from all channels
+                foreach ($axleGroup->getDeviceChannels() as $channel) {
+                    $device = $channel->getDevice();
+
+                    // Get latest data for this device
+                    $latestData = $em->getRepository(MicroData::class)
+                        ->createQueryBuilder('m')
+                        ->where('m.device = :device')
+                        ->setParameter('device', $device)
+                        ->orderBy('m.id', 'DESC')
+                        ->setMaxResults(1)
+                        ->getQuery()
+                        ->getOneOrNullResult();
+
+                    if ($latestData && $channel->getRegressionIntercept() !== null) {
+                        // Get channel-specific data if available
+                        $channelData = null;
+                        if ($latestData->getChannels() && count($latestData->getChannels()) > 0) {
+                            foreach ($latestData->getChannels() as $chData) {
+                                if ($chData['channel_index'] === $channel->getChannelIndex()) {
+                                    $channelData = $chData;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Calculate weight using channel calibration
+                        $airPressure = $channelData['air_pressure'] ?? $latestData->getMainAirPressure();
+                        $weight += $channel->getRegressionIntercept() +
+                                   ($channel->getRegressionAirPressureCoeff() * $airPressure);
+                        $calibratedChannels++;
+                    }
+                }
+
+                $totalWeight += $weight;
+
+                $axleGroups[] = [
+                    'entity' => $axleGroup,
+                    'weight' => $weight,
+                    'status' => $axleGroup->getCalibrationStatus(),
+                    'points' => $axleGroup->getMinCalibrationPoints(),
+                    'channelCount' => $channelCount,
+                    'calibratedChannels' => $calibratedChannels,
+                ];
+            }
+
+            // Check for BLE hub device (master role)
+            foreach ($activeConfiguration->getDeviceRoles() as $deviceRole) {
+                $device = $deviceRole->getDevice();
+                if ($device->getCurrentRole() === 'master') {
+                    $bluetoothStatus = [
+                        'device' => $device,
+                        'connected' => $this->checkDeviceConnected($device, $em),
+                    ];
+                    break;
+                }
+            }
+        }
+
         $hasActiveSubscription = $this->checkSubscriptionStatus($user);
-        $hasSetupConfiguration = $this->checkSetupStatus($userDevices);
-        
+
         return $this->render('dashboard/index.html.twig', [
-            'devices' => $userDevices,
+            'activeConfiguration' => $activeConfiguration,
+            'axleGroups' => $axleGroups,
             'totalWeight' => $totalWeight,
+            'bluetoothStatus' => $bluetoothStatus,
             'hasActiveSubscription' => $hasActiveSubscription,
-            'hasSetupConfiguration' => $hasSetupConfiguration,
         ]);
+    }
+
+    private function checkDeviceConnected(Device $device, EntityManagerInterface $em): bool
+    {
+        $latestData = $em->getRepository(MicroData::class)
+            ->createQueryBuilder('m')
+            ->where('m.device = :device')
+            ->setParameter('device', $device)
+            ->orderBy('m.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if (!$latestData) {
+            return false;
+        }
+
+        $now = new \DateTime();
+        $secondsDiff = $now->getTimestamp() - $latestData->getTimestamp()->getTimestamp();
+
+        return $secondsDiff <= 120; // Connected if data within 2 minutes
     }
 
     private function getUserDevicesWithData(EntityManagerInterface $em, $user): array
