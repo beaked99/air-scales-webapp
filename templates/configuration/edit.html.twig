@@ -50,6 +50,49 @@
       </section>
     </form>
 
+    <!-- Fleet Sharing -->
+    <section class="m-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+      <h2 class="text-lg font-semibold mb-2">Fleet Sharing</h2>
+      <p class="text-sm text-gray-400 mb-4">
+        Share this configuration with all users in your fleet to avoid duplication
+      </p>
+
+      <div class="flex items-center justify-between p-4 bg-gray-750 border border-gray-600 rounded-lg">
+        <div class="flex items-center gap-3">
+          <div class="flex-shrink-0">
+            <i class="text-xl {% if configuration.isShared %}text-green-400 fas fa-users{% else %}text-gray-400 fas fa-lock{% endif %}"></i>
+          </div>
+          <div>
+            <div class="font-medium text-white">
+              {% if configuration.isShared %}
+                Shared with Fleet
+              {% else %}
+                Private Configuration
+              {% endif %}
+            </div>
+            <div class="text-xs text-gray-400">
+              {% if configuration.isShared %}
+                All users can view and activate this configuration
+              {% else %}
+                Only you can see this configuration
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <button
+          id="toggle-shared-btn"
+          onclick="toggleShared()"
+          class="px-4 py-2 text-sm font-semibold transition-colors rounded-lg {% if configuration.isShared %}bg-orange-600 hover:bg-orange-700{% else %}bg-green-600 hover:bg-green-700{% endif %}"
+        >
+          {% if configuration.isShared %}
+            <i class="mr-1 fas fa-lock"></i> Make Private
+          {% else %}
+            <i class="mr-1 fas fa-share-alt"></i> Share
+          {% endif %}
+        </button>
+      </div>
+    </section>
+
     <!-- Current Devices -->
     <section class="m-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
       <h2 class="text-lg font-semibold mb-3">Devices in this Configuration</h2>
@@ -161,6 +204,25 @@
 </div>
 
 <script>
+function toggleShared() {
+  fetch('/configuration/{{ configuration.id }}/toggle-shared', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      window.location.reload();
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    alert('Failed to update sharing status');
+    console.error(err);
+  });
+}
+
 function deleteConfiguration(configId) {
   if (confirm('Are you sure you want to delete this configuration? This cannot be undone.')) {
     fetch(`/configuration/${configId}/delete`, {

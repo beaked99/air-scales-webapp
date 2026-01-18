@@ -22,11 +22,13 @@ class ConfigurationController extends AbstractController
     {
         $user = $this->getUser();
 
-        // Get all configurations for this user
+        // Get configurations owned by this user OR shared configurations
         $configurations = $em->getRepository(TruckConfiguration::class)
             ->createQueryBuilder('tc')
             ->where('tc.owner = :user')
+            ->orWhere('tc.isShared = :true')
             ->setParameter('user', $user)
+            ->setParameter('true', true)
             ->orderBy('tc.isActive', 'DESC')
             ->addOrderBy('tc.lastUsed', 'DESC')
             ->getQuery()
@@ -80,8 +82,13 @@ class ConfigurationController extends AbstractController
         $user = $this->getUser();
         $configuration = $em->getRepository(TruckConfiguration::class)->find($id);
 
-        if (!$configuration || $configuration->getOwner() !== $user) {
+        if (!$configuration) {
             throw $this->createNotFoundException('Configuration not found');
+        }
+
+        // Check if user has access (owner OR shared config)
+        if ($configuration->getOwner() !== $user && !$configuration->isShared()) {
+            throw $this->createAccessDeniedException('You do not have access to this configuration');
         }
 
         // Get axle groups with their status
@@ -133,8 +140,13 @@ class ConfigurationController extends AbstractController
         $user = $this->getUser();
         $configuration = $em->getRepository(TruckConfiguration::class)->find($id);
 
-        if (!$configuration || $configuration->getOwner() !== $user) {
+        if (!$configuration) {
             return new JsonResponse(['error' => 'Configuration not found'], 404);
+        }
+
+        // Check if user has access (owner OR shared config)
+        if ($configuration->getOwner() !== $user && !$configuration->isShared()) {
+            return new JsonResponse(['error' => 'Access denied'], 403);
         }
 
         // Deactivate all other configurations for this user
@@ -175,6 +187,29 @@ class ConfigurationController extends AbstractController
         return new JsonResponse([
             'success' => true,
             'message' => 'Configuration deleted',
+        ]);
+    }
+
+    #[Route('/{id}/toggle-shared', name: 'configuration_toggle_shared', methods: ['POST'])]
+    public function toggleShared(int $id, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        $configuration = $em->getRepository(TruckConfiguration::class)->find($id);
+
+        if (!$configuration || $configuration->getOwner() !== $user) {
+            return new JsonResponse(['error' => 'Configuration not found or access denied'], 404);
+        }
+
+        // Toggle the shared status
+        $configuration->setIsShared(!$configuration->isShared());
+        $em->flush();
+
+        return new JsonResponse([
+            'success' => true,
+            'isShared' => $configuration->isShared(),
+            'message' => $configuration->isShared()
+                ? 'Configuration is now shared with all users'
+                : 'Configuration is now private',
         ]);
     }
 
@@ -248,8 +283,13 @@ class ConfigurationController extends AbstractController
         $user = $this->getUser();
         $configuration = $em->getRepository(TruckConfiguration::class)->find($id);
 
-        if (!$configuration || $configuration->getOwner() !== $user) {
+        if (!$configuration) {
             throw $this->createNotFoundException('Configuration not found');
+        }
+
+        // Check if user has access (owner OR shared config)
+        if ($configuration->getOwner() !== $user && !$configuration->isShared()) {
+            throw $this->createAccessDeniedException('You do not have access to this configuration');
         }
 
         $axleGroups = [];
