@@ -136,7 +136,9 @@ class ConfigurationController extends AbstractController
         usort($deviceRoles, function($a, $b) {
             $aHasVirtual = $a->getDevice() && $a->getDevice()->hasVirtualSteer();
             $bHasVirtual = $b->getDevice() && $b->getDevice()->hasVirtualSteer();
-            return ($bHasVirtual ? 1 : 0) - ($aHasVirtual ? 1 : 0);
+            // Return negative if a should come before b (a has virtual, b doesn't)
+            // Return positive if b should come before a (b has virtual, a doesn't)
+            return ($aHasVirtual ? 0 : 1) - ($bHasVirtual ? 0 : 1);
         });
 
         return $this->render('configuration/edit.html.twig', [
