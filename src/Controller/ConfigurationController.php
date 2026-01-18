@@ -296,13 +296,35 @@ class ConfigurationController extends AbstractController
             throw $this->createAccessDeniedException('You do not have access to this configuration');
         }
 
-        $axleGroups = [];
-        foreach ($configuration->getAxleGroups() as $axleGroup) {
-            $axleGroups[] = [
-                'entity' => $axleGroup,
-                'channels' => $axleGroup->getDeviceChannels()->toArray(),
-            ];
+        // Build axle groups from device roles
+        $axleGroupsMap = [];
+        foreach ($configuration->getDeviceRoles() as $deviceRole) {
+            $device = $deviceRole->getDevice();
+            $roleName = $deviceRole->getRole();
+
+            if (!$device) continue;
+
+            // Get or create entry for this role
+            if (!isset($axleGroupsMap[$roleName])) {
+                // Find the AxleGroup entity by name
+                $axleGroupEntity = $em->getRepository(AxleGroup::class)->findOneBy(['name' => $roleName]);
+                if (!$axleGroupEntity) continue;
+
+                $axleGroupsMap[$roleName] = [
+                    'entity' => $axleGroupEntity,
+                    'channels' => [],
+                ];
+            }
+
+            // Add all enabled channels from this device to this axle group
+            foreach ($device->getDeviceChannels() as $channel) {
+                if ($channel->isEnabled()) {
+                    $axleGroupsMap[$roleName]['channels'][] = $channel;
+                }
+            }
         }
+
+        $axleGroups = array_values($axleGroupsMap);
 
         if ($request->isMethod('POST')) {
             return $this->processBulkCalibration($configuration, $request, $em);

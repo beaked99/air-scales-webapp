@@ -90,16 +90,16 @@
                     </div>
 
                     <!-- Virtual Steer Channel (if enabled) -->
-                    {% if device.hasVirtualSteer and device.virtualSteerWeight is defined %}
+                    {% if device.hasVirtualSteer %}
                       <div class="flex items-center justify-between py-1 text-sm">
                         <span class="text-purple-400">
                           <i class="fas fa-calculator mr-1"></i>Virtual Steer
                         </span>
                         <span class="font-semibold text-purple-300">
-                          {% if device.virtualSteerWeight > 0 %}
+                          {% if device.virtualSteerWeight is defined and device.virtualSteerWeight > 0 %}
                             {{ device.virtualSteerWeight|number_format(0) }} lbs
                           {% else %}
-                            -- lbs
+                            <span class="text-xs text-gray-500">Need calibration data</span>
                           {% endif %}
                         </span>
                       </div>
