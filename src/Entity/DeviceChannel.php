@@ -59,6 +59,9 @@ class DeviceChannel
     #[ORM\Column(type: 'string', length: 64, nullable: true)]
     private ?string $sensorType = null; // 'pressure', 'temperature', etc. for future expansion
 
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $displayOrder = null; // Custom display order for channels (including virtual steer as 0)
+
     #[ORM\OneToMany(mappedBy: 'deviceChannel', targetEntity: MicroDataChannel::class, orphanRemoval: true)]
     private Collection $microDataChannels;
 
@@ -213,6 +216,17 @@ class DeviceChannel
     public function setSensorType(?string $sensorType): self
     {
         $this->sensorType = $sensorType;
+        return $this;
+    }
+
+    public function getDisplayOrder(): ?int
+    {
+        return $this->displayOrder;
+    }
+
+    public function setDisplayOrder(?int $displayOrder): self
+    {
+        $this->displayOrder = $displayOrder;
         return $this;
     }
 

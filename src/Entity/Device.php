@@ -72,6 +72,7 @@ class Device
     private Collection $microData;
 
     #[ORM\OneToMany(mappedBy: 'device', targetEntity: DeviceChannel::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
+    #[ORM\OrderBy(['displayOrder' => 'ASC', 'channelIndex' => 'ASC'])]
     private Collection $deviceChannels;
 
     // DEPRECATED: Old single-channel regression coefficients - keep for backward compatibility
