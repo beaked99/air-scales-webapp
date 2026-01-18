@@ -103,7 +103,6 @@
         </div>
       {% else %}
         <div class="space-y-2">
-          {% set sortedDeviceRoles = configuration.deviceRoles|sort((a, b) => (a.device.hasVirtualSteer ? 0 : 1) <=> (b.device.hasVirtualSteer ? 0 : 1)) %}
           {% for deviceRole in sortedDeviceRoles %}
             {% set device = deviceRole.device %}
             <div class="p-3 {% if device.hasVirtualSteer %}bg-purple-900/10 border-purple-600{% else %}bg-gray-750 border-gray-600{% endif %} border rounded-lg">

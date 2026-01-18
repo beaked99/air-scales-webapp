@@ -131,10 +131,19 @@ class ConfigurationController extends AbstractController
         $devices = $this->getUserDevices($em, $user);
         $axleGroups = $em->getRepository(AxleGroup::class)->findAll();
 
+        // Sort device roles - virtual steer devices first
+        $deviceRoles = $configuration->getDeviceRoles()->toArray();
+        usort($deviceRoles, function($a, $b) {
+            $aHasVirtual = $a->getDevice() && $a->getDevice()->hasVirtualSteer();
+            $bHasVirtual = $b->getDevice() && $b->getDevice()->hasVirtualSteer();
+            return ($bHasVirtual ? 1 : 0) - ($aHasVirtual ? 1 : 0);
+        });
+
         return $this->render('configuration/edit.html.twig', [
             'configuration' => $configuration,
             'devices' => $devices,
             'axleGroups' => $axleGroups,
+            'sortedDeviceRoles' => $deviceRoles,
         ]);
     }
 
