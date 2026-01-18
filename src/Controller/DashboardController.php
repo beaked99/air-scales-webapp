@@ -55,18 +55,18 @@ class DashboardController extends AbstractController
                     $weight = 0;
                     if ($latestData && $channel->getRegressionIntercept() !== null) {
                         // Get channel-specific data if available
-                        $channelData = null;
-                        if ($latestData->getChannels() && count($latestData->getChannels()) > 0) {
-                            foreach ($latestData->getChannels() as $chData) {
-                                if ($chData['channel_index'] === $channel->getChannelIndex()) {
-                                    $channelData = $chData;
-                                    break;
-                                }
+                        $microDataChannel = null;
+                        foreach ($latestData->getMicroDataChannels() as $mdc) {
+                            if ($mdc->getChannelIndex() === $channel->getChannelIndex()) {
+                                $microDataChannel = $mdc;
+                                break;
                             }
                         }
 
                         // Calculate weight using channel calibration
-                        $airPressure = $channelData['air_pressure'] ?? $latestData->getMainAirPressure();
+                        $airPressure = $microDataChannel
+                            ? $microDataChannel->getAirPressure()
+                            : $latestData->getMainAirPressure();
                         $weight = $channel->getRegressionIntercept() +
                                  ($channel->getRegressionAirPressureCoeff() * $airPressure);
                     }
