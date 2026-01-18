@@ -40,6 +40,18 @@ class TruckConfiguration
     #[ORM\Column(type: 'boolean')]
     private bool $isShared = false;
 
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $wheelbase = null; // inches - distance between steer and drive axle centers
+
+    #[ORM\Column(type: 'boolean')]
+    private bool $hasVirtualSteer = false;
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $virtualSteerIntercept = null; // learned empty steer weight
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $virtualSteerCoeff = null; // learned coefficient for drive weight effect
+
     public function __construct()
     {
         $this->deviceRoles = new ArrayCollection();
@@ -60,6 +72,18 @@ class TruckConfiguration
     public function setIsActive(bool $isActive): self { $this->isActive = $isActive; return $this; }
     public function isShared(): bool { return $this->isShared; }
     public function setIsShared(bool $isShared): self { $this->isShared = $isShared; return $this; }
+
+    public function getWheelbase(): ?float { return $this->wheelbase; }
+    public function setWheelbase(?float $wheelbase): self { $this->wheelbase = $wheelbase; return $this; }
+
+    public function hasVirtualSteer(): bool { return $this->hasVirtualSteer; }
+    public function setHasVirtualSteer(bool $hasVirtualSteer): self { $this->hasVirtualSteer = $hasVirtualSteer; return $this; }
+
+    public function getVirtualSteerIntercept(): ?float { return $this->virtualSteerIntercept; }
+    public function setVirtualSteerIntercept(?float $virtualSteerIntercept): self { $this->virtualSteerIntercept = $virtualSteerIntercept; return $this; }
+
+    public function getVirtualSteerCoeff(): ?float { return $this->virtualSteerCoeff; }
+    public function setVirtualSteerCoeff(?float $virtualSteerCoeff): self { $this->virtualSteerCoeff = $virtualSteerCoeff; return $this; }
 
     /**
      * Get all axle groups from all device roles in this configuration

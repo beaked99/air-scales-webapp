@@ -122,16 +122,18 @@
                 </span>
               </div>
             </div>
+
+            <!-- Quick Action -->
+            <div class="mt-4 pt-3 border-t border-gray-600">
+              <a href="{{ path('configuration_bulk_calibration', {id: activeConfiguration.id}) }}"
+                 onclick="event.stopPropagation();"
+                 class="block w-full py-3 text-center font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 transition-colors">
+                📝 Add Scale Weights
+              </a>
+            </div>
           {% endif %}
         </div>
       </a>
-
-      <!-- Quick Actions -->
-      <div class="m-4 space-y-2">
-        <a href="{{ path('configuration_bulk_calibration', {id: activeConfiguration.id}) }}" class="block w-full py-4 text-center font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 transition-colors">
-          📝 Add Scale Weights
-        </a>
-      </div>
 
     {% else %}
       <!-- No Active Configuration -->
